@@ -1,0 +1,338 @@
+{
+  "executed": "2026-10-21T10:56:56Z",
+  "passed": 80,
+  "tests": [
+    {
+      "test": "brand is watch you",
+      "status": "PASS"
+    },
+    {
+      "test": "default view makes zero provider requests",
+      "status": "PASS"
+    },
+    {
+      "test": "route today renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route sleep renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route heart renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route mood renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route assistant renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route recovery renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route activity renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route habits renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route trends renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route sources renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route settings renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route aiSettings renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "route more renders without device-count UI",
+      "status": "PASS"
+    },
+    {
+      "test": "emotion is inferred by default, no mandatory slider",
+      "status": "PASS"
+    },
+    {
+      "test": "emotion displays uncertainty not a calibrated probability",
+      "status": "PASS"
+    },
+    {
+      "test": "optional text excluded unless its scope is enabled",
+      "status": "PASS"
+    },
+    {
+      "test": "optional text is not exported",
+      "status": "PASS"
+    },
+    {
+      "test": "baseline emotion abstains",
+      "status": "PASS"
+    },
+    {
+      "test": "stale emotion abstains",
+      "status": "PASS"
+    },
+    {
+      "test": "empty emotion abstains",
+      "status": "PASS"
+    },
+    {
+      "test": "phone water entry works",
+      "status": "PASS"
+    },
+    {
+      "test": "offline event stays local and pending",
+      "status": "PASS"
+    },
+    {
+      "test": "reconnect merges once",
+      "status": "PASS"
+    },
+    {
+      "test": "generic source preference selects without averaging",
+      "status": "PASS"
+    },
+    {
+      "test": "saving profile does not send a request",
+      "status": "PASS"
+    },
+    {
+      "test": "key is absent from stored configuration",
+      "status": "PASS"
+    },
+    {
+      "test": "key absent from backup",
+      "status": "PASS"
+    },
+    {
+      "test": "stored/backup mode is safe demo",
+      "status": "PASS"
+    },
+    {
+      "test": "watch does not invent a live summary before inference",
+      "status": "PASS"
+    },
+    {
+      "test": "model list requires explicit target confirmation",
+      "status": "PASS"
+    },
+    {
+      "test": "model list adapter parses IDs",
+      "status": "PASS"
+    },
+    {
+      "test": "connection test succeeds with mock only",
+      "status": "PASS"
+    },
+    {
+      "test": "test contains no health facts",
+      "status": "PASS"
+    },
+    {
+      "test": "first health analysis previews scope and target",
+      "status": "PASS"
+    },
+    {
+      "test": "mock response replaces demo, preserves source label",
+      "status": "PASS"
+    },
+    {
+      "test": "unsupported positive/negative emotion remains unknown",
+      "status": "PASS"
+    },
+    {
+      "test": "live result still identifies synthetic observations",
+      "status": "PASS"
+    },
+    {
+      "test": "unapproved optional text is absent from request",
+      "status": "PASS"
+    },
+    {
+      "test": "same evidence packet is not automatically resent",
+      "status": "PASS"
+    },
+    {
+      "test": "model change revokes previous consent",
+      "status": "PASS"
+    },
+    {
+      "test": "new model asks consent again",
+      "status": "PASS"
+    },
+    {
+      "test": "valid new model result is applied",
+      "status": "PASS"
+    },
+    {
+      "test": "unknown evidence does not produce a valid result",
+      "status": "PASS"
+    },
+    {
+      "test": "malformed JSON is a failure, not demo fallback",
+      "status": "PASS"
+    },
+    {
+      "test": "auth error shown without exposing response secrets",
+      "status": "PASS"
+    },
+    {
+      "test": "Responses request and raw blocks parsed",
+      "status": "PASS"
+    },
+    {
+      "test": "Messages request and text blocks parsed",
+      "status": "PASS"
+    },
+    {
+      "test": "model output HTML is rendered only as text",
+      "status": "PASS"
+    },
+    {
+      "test": "destination change clears secret binding",
+      "status": "PASS"
+    },
+    {
+      "test": "export schema and synthetic label are correct",
+      "status": "PASS"
+    },
+    {
+      "test": "export does not contain credentials or contextual text",
+      "status": "PASS"
+    },
+    {
+      "test": "import confirms before overwrite",
+      "status": "PASS"
+    },
+    {
+      "test": "import returns to demo with no authorization",
+      "status": "PASS"
+    },
+    {
+      "test": "habit amount retained after serialized restore",
+      "status": "PASS"
+    },
+    {
+      "test": "breathing animation has functional timer",
+      "status": "PASS"
+    },
+    {
+      "test": "early stop does not create fake complete session",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 375px/today",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 375px/mood",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 375px/aiSettings",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 375px/assistant",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 375px/sources",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 390px/today",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 390px/mood",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 390px/aiSettings",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 390px/assistant",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 390px/sources",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 768px/today",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 768px/mood",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 768px/aiSettings",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 768px/assistant",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 768px/sources",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 1440px/today",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 1440px/mood",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 1440px/aiSettings",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 1440px/assistant",
+      "status": "PASS"
+    },
+    {
+      "test": "no viewport overflow at 1440px/sources",
+      "status": "PASS"
+    },
+    {
+      "test": "all network requests intercepted to test provider",
+      "status": "PASS"
+    },
+    {
+      "test": "no uncaught browser errors",
+      "status": "PASS"
+    }
+  ],
+  "environment": "Chromium / Linux; Playwright set_content with in-memory localStorage adapter; file navigation blocked by environment policy",
+  "network": "all provider traffic intercepted using Playwright route mocks; no external model or real credentials used",
+  "browser_errors": [],
+  "mock_provider_requests": 10,
+  "not_tested": [
+    "real browser restart persistence",
+    "Safari/WebKit",
+    "actual provider authentication and CORS",
+    "native Xcode/HealthKit/Keychain/WatchConnectivity",
+    "Personal Team signing and on-device background scheduling",
+    "medical or emotion-recognition accuracy"
+  ]
+}

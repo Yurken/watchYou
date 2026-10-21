@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "active": "default",
+  "profiles": [
+    {
+      "id": "default",
+      "name": "我的 AI 服务",
+      "baseURL": "https://model.example/v1",
+      "protocol": "chat",
+      "model": "your-model-id",
+      "auth": "bearer",
+      "temperature": "",
+      "maxTokens": 1200,
+      "tokenField": "max_tokens",
+      "timeout": 45,
+      "allowLocalHTTP": false
+    }
+  ],
+  "mode": "demo",
+  "auto": true,
+  "dailyLimit": 20,
+  "modules": {
+    "today": true,
+    "mood": true,
+    "sleep": true,
+    "heart": true,
+    "recovery": true,
+    "activity": true,
+    "habits": true,
+    "trends": true,
+    "assistant": true
+  },
+  "scopes": {
+    "sleep": true,
+    "heart": true,
+    "activity": true,
+    "habits": false,
+    "context": false
+  }
+}

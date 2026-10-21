@@ -1,0 +1,19 @@
+{
+  "summary": "近期合成生理摘要出现变化；不能仅据此确定情绪正负向。",
+  "evidenceIds": [
+    "H1",
+    "H2"
+  ],
+  "uncertainties": [
+    "全部为合成示例，未验证真实情绪。"
+  ],
+  "suggestions": [
+    "先观察状态变化。"
+  ],
+  "emotion": {
+    "status": "estimated",
+    "label": "可能偏紧绷",
+    "arousal": "moderate",
+    "valence": "unknown"
+  }
+}

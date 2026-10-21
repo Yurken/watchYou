@@ -1,0 +1,19 @@
+PASS interval union eliminates overlaps
+PASS empty union returns zero
+PASS invalid interval is excluded
+PASS sleep uses preferred source, not two durations
+PASS in-bed interval is not added to sleep
+PASS awake subtracts from asleep on chosen timeline
+PASS preferred source gaps can use second source
+PASS sleep fixture rounds to 92
+PASS insufficient sleep baseline yields null
+PASS unknown coverage does not yield a score
+PASS recovery fixture rounds to 83
+PASS missing HRV cannot become zero stress/recovery
+PASS recovery baseline under 14 nights hides score
+PASS idempotent event avoids duplicate water
+PASS backup rejects wrong schema
+PASS backup clamps configuration and sanitizes fields
+PASS backup rejects invalid event
+
+17/17 domain checks passed. These test prototype logic, not medical validity or Apple platform integration.

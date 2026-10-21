@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "watch you prototype AI result v2",
+  "description": "简化原型契约。JSON Schema 不验证证据语义、授权或医学正确性；还必须执行领域校验。",
+  "type": "object",
+  "required": [
+    "summary",
+    "evidenceIds",
+    "uncertainties",
+    "suggestions",
+    "emotion"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1800
+    },
+    "evidenceIds": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string"
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 700
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "maxLength": 700
+      }
+    },
+    "emotion": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "status",
+            "label",
+            "arousal",
+            "valence"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "estimated",
+                "insufficient"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "arousal": {
+              "enum": [
+                "low",
+                "moderate",
+                "high",
+                "unknown"
+              ]
+            },
+            "valence": {
+              "enum": [
+                "negative",
+                "neutral",
+                "positive",
+                "unknown"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

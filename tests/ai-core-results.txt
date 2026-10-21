@@ -1,0 +1,47 @@
+PASS default mode does not call a provider
+PASS default optional text scope is off
+PASS trailing slash normalizes
+PASS full chat endpoint normalizes without duplicated v1
+PASS custom gateway prefix is preserved
+PASS URL credentials rejected
+PASS URL query secrets rejected
+PASS URL fragments rejected
+PASS javascript scheme rejected
+PASS public HTTP rejected even with local flag
+PASS private HTTP requires explicit permission
+PASS private HTTP can be explicitly enabled
+PASS loopback is permitted only in local mode
+PASS 127-prefixed attacker hostname is not local
+PASS private range excludes 172.32
+PASS cloud metadata address is not allowed
+PASS oversized URL rejected
+PASS profiles discard secret fields
+PASS backup configuration restores demo mode
+PASS duplicate profile IDs rejected
+PASS out of range temperature rejected
+PASS invalid timeout rejected
+PASS missing model cannot call generation
+PASS missing key is not silently sent
+PASS explicit no-auth sends no Authorization
+PASS blank temperature omitted
+PASS optional temperature included
+PASS chat completion token key selectable
+PASS Responses separates instructions and input
+PASS Anthropic body and version adapter
+PASS credentials and redirects disabled
+PASS chat text extracted
+PASS Responses text extracted from raw output blocks
+PASS Anthropic text blocks extracted
+PASS truncated output rejected
+PASS incomplete Responses rejected
+PASS valid emotion estimate keeps unknown valence
+PASS non-JSON output rejected
+PASS unknown evidence ID rejected
+PASS missing evidence references rejected
+PASS positive valence unsupported without context
+PASS specific clinical emotion label is not accepted from physiology
+PASS insufficient status cannot have determinate axes
+PASS oversized model response rejected
+PASS safe error does not expose server response
+
+45/45 AI helper checks passed. No external models or real health data used.
