@@ -4,7 +4,11 @@
 
 情绪以 AI 自动推断为主，手动背景与纠正为可选；界面只呈现通用数据来源，不突出设备数量。AI 覆盖今日、睡眠、心率/HRV、恢复、运动、习惯、趋势报告与问答。设置支持自定义 URL、Model、API Key、协议、多组服务、调用参数和外发数据范围。
 
-当前仓库不是已签名 App 或完成的 Xcode 工程。所有健康观测均为合成示例，情绪推断未做真实效果或医学验证。
+当前仓库包含 M0 原生平台探针（可构建的最小 iPhone/watchOS 配套工程），但不是完成的 App。所有健康观测均为合成示例，情绪推断未做真实效果或医学验证。
+
+## 原生开发状态（M0）
+
+已建立 `WatchYou.xcworkspace` 与 `Apps/WatchYouiOS`、`Apps/WatchYouWatch`、`Packages/WatchYouCore` 最小工程；模拟器上已验证 WatchConnectivity 双端往返、HealthKit 授权 sheet 真实弹出、Core 单元测试 6/6。真机签名、HealthKit 查询结果分支、覆盖重签与 Keychain 闭环未验证，明细见 [docs/M0_REPORT.md](docs/M0_REPORT.md)。
 
 ## 阅读与运行
 

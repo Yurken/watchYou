@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2 · 2026-10-21
+
+进入原生开发 M0：新增 `WatchYou.xcworkspace`、`Apps/WatchYouiOS`（HealthKit 步数探针 + 六态授权状态机）、`Apps/WatchYouWatch`（WCSession 接收/回执）、`Packages/WatchYouCore`（睡眠分/恢复分/训练负荷纯 Swift 实现，缺失输入弃权，6 个 XCTest）。
+
+验证（仅限本机模拟器）：Core 6/6 通过；WatchConnectivity 双端编号往返打通（`ios-to-watch #3` ↔ `watch-ack #3`）；HealthKit 授权 sheet 真实弹出。未验证：真机签名、查询结果分支、覆盖重签、Keychain 闭环。明细见 `docs/M0_REPORT.md`。
+
 ## v2.1 · 2026-10-21
 
 按 PRD 补齐原型差距：饮水支持自定义目标（500–4000 ml）与撤销/恢复上一次记录；运动 RPE 持久化，训练负荷 = 分钟 × RPE（无 RPE 不生成数字）；睡眠页新增日间小睡卡（不计入主睡眠评分）；恢复参考展示基线窗口、有效日、样本时间与缺失输入；提醒治理支持分类开关、静默时段与每日上限。新增 `trainingLoad` / `validateReminderPrefs` 领域函数，演示备份格式向后兼容（新字段缺省回填）。

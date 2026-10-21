@@ -13,6 +13,8 @@
 DerivedData/
 .build/
 build/
+.ios-build/
+**/.ios-build/
 __pycache__/
 *.pyc
 .venv/
