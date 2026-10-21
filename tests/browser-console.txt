@@ -23,6 +23,19 @@ PASS empty emotion abstains
 PASS phone water entry works
 PASS offline event stays local and pending
 PASS reconnect merges once
+PASS water undo removes the last entry once
+PASS second undo restores the removed entry
+PASS undo without pending removal is a no-op
+PASS custom water goal replaces the sample goal
+PASS out-of-range water goal is clamped
+PASS RPE persists and load equals minutes times RPE
+PASS invalid RPE is rejected without changing state
+PASS cleared RPE produces no load number
+PASS nap is shown separately from the main episode
+PASS recovery exposes baseline window, valid days and sample time
+PASS baseline scenario names the missing input
+PASS reminder categories and daily cap persist
+PASS reminder summary shows categories and quiet hours
 PASS generic source preference selects without averaging
 PASS saving profile does not send a request
 PASS key is absent from stored configuration
@@ -78,4 +91,4 @@ PASS no viewport overflow at 1440px/assistant
 PASS no viewport overflow at 1440px/sources
 PASS all network requests intercepted to test provider
 PASS no uncaught browser errors
-PASSED 80
+PASSED 93

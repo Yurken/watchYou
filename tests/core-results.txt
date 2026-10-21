@@ -15,5 +15,14 @@ PASS idempotent event avoids duplicate water
 PASS backup rejects wrong schema
 PASS backup clamps configuration and sanitizes fields
 PASS backup rejects invalid event
+PASS training load needs both minutes and integer RPE
+PASS training load multiplies minutes by RPE
+PASS RPE outside 0-10 is rejected instead of clamped
+PASS backup restores defaults for new habit fields
+PASS backup clamps water goal into allowed range
+PASS non-numeric RPE in backup becomes null, valid RPE survives
+PASS reminder prefs default all categories off
+PASS reminder prefs clamp daily cap and reject malformed quiet hours
+PASS valid quiet hours and cap are preserved
 
-17/17 domain checks passed. These test prototype logic, not medical validity or Apple platform integration.
+26/26 domain checks passed. These test prototype logic, not medical validity or Apple platform integration.

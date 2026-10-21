@@ -1,6 +1,6 @@
 {
-  "executed": "2026-10-21T10:56:56Z",
-  "passed": 80,
+  "executed": "2026-10-21T11:21:29Z",
+  "passed": 93,
   "tests": [
     {
       "test": "brand is watch you",
@@ -100,6 +100,58 @@
     },
     {
       "test": "reconnect merges once",
+      "status": "PASS"
+    },
+    {
+      "test": "water undo removes the last entry once",
+      "status": "PASS"
+    },
+    {
+      "test": "second undo restores the removed entry",
+      "status": "PASS"
+    },
+    {
+      "test": "undo without pending removal is a no-op",
+      "status": "PASS"
+    },
+    {
+      "test": "custom water goal replaces the sample goal",
+      "status": "PASS"
+    },
+    {
+      "test": "out-of-range water goal is clamped",
+      "status": "PASS"
+    },
+    {
+      "test": "RPE persists and load equals minutes times RPE",
+      "status": "PASS"
+    },
+    {
+      "test": "invalid RPE is rejected without changing state",
+      "status": "PASS"
+    },
+    {
+      "test": "cleared RPE produces no load number",
+      "status": "PASS"
+    },
+    {
+      "test": "nap is shown separately from the main episode",
+      "status": "PASS"
+    },
+    {
+      "test": "recovery exposes baseline window, valid days and sample time",
+      "status": "PASS"
+    },
+    {
+      "test": "baseline scenario names the missing input",
+      "status": "PASS"
+    },
+    {
+      "test": "reminder categories and daily cap persist",
+      "status": "PASS"
+    },
+    {
+      "test": "reminder summary shows categories and quiet hours",
       "status": "PASS"
     },
     {

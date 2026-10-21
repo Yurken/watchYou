@@ -34,6 +34,14 @@ function recoveryScore({hrv,rhr,baselineHRV=48,baselineRHR=58,logHRVScale=.18,rh
  return {value:Math.round(clamp(Object.values(parts).reduce((a,b)=>a+b,0),0,100)),parts,version:'recovery-experimental-0.1'};
 }
 function addEvent(events,event){if(!event||typeof event.id!=='string')throw Error('Missing event id');return events.some(x=>x.id===event.id)?events:[...events,event];}
+function trainingLoad(minutes,rpe){if(!Number.isFinite(minutes)||!Number.isFinite(rpe)||minutes<=0||minutes>1440||!Number.isInteger(rpe)||rpe<0||rpe>10)return null;return Math.round(minutes*rpe);}
+function validateReminderPrefs(x){
+ const d={sleepPrep:false,habits:false,water:false,maintenance:false,quietStart:'22:00',quietEnd:'07:00',dailyCap:3};
+ if(!x||typeof x!=='object')return d;
+ const time=k=>{const v=typeof x[k]==='string'?x[k]:d[k];return /^([01]\d|2[0-3]):[0-5]\d$/.test(v)?v:d[k];};
+ const cap=Number(x.dailyCap);
+ return {sleepPrep:x.sleepPrep===true,habits:x.habits===true,water:x.water===true,maintenance:x.maintenance===true,quietStart:time('quietStart'),quietEnd:time('quietEnd'),dailyCap:Number.isInteger(cap)?clamp(cap,1,10):d.dailyCap};
+}
 function validateBackup(x){
  if(!x||!['healthhub.demo.v1','watchyou.demo.v2'].includes(x.schema)||x.synthetic!==true||!x.state||typeof x.state!=='object')throw Error('仅支持此原型导出的演示备份');
  const s=x.state;
@@ -41,7 +49,7 @@ function validateBackup(x){
  for(const m of s.moods){if(typeof m.id!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(m.id)||!Number.isFinite(m.valence)||m.valence < -1||m.valence>1||typeof m.note!=='string'||m.note.length>300)throw Error('情绪记录无效');}
  const events=s.events.map(e=>{if(typeof e.id!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(e.id)||typeof e.kind!=='string'||!['water','mindful'].includes(e.kind)||!Number.isFinite(e.amount)||e.amount<=0||e.amount>10000||typeof e.pending!=='boolean')throw Error('事件记录无效');return {id:e.id,kind:e.kind,amount:e.amount,pending:e.pending};});
  const uniqueEvents=events.filter((e,i,a)=>a.findIndex(t=>t.id===e.id)===i);
- return {moods:s.moods.map(m=>({id:m.id,valence:m.valence,note:m.note,tags:Array.isArray(m.tags)?m.tags.filter(t=>typeof t==='string').slice(0,8):[],time:typeof m.time==='string'?m.time.slice(0,30):'演示记录',kind:m.kind==='daily'?'daily':'momentary',pending:!!m.pending})),events:uniqueEvents,goal:Number.isFinite(s.goal)?clamp(s.goal,360,600):480,preferredHR:['A','B'].includes(s.preferredHR)?s.preferredHR:'A',preferredSleep:['A','B'].includes(s.preferredSleep)?s.preferredSleep:'B',reminders:!!s.reminders};
+ return {moods:s.moods.map(m=>({id:m.id,valence:m.valence,note:m.note,tags:Array.isArray(m.tags)?m.tags.filter(t=>typeof t==='string').slice(0,8):[],time:typeof m.time==='string'?m.time.slice(0,30):'演示记录',kind:m.kind==='daily'?'daily':'momentary',pending:!!m.pending})),events:uniqueEvents,goal:Number.isFinite(s.goal)?clamp(s.goal,360,600):480,preferredHR:['A','B'].includes(s.preferredHR)?s.preferredHR:'A',preferredSleep:['A','B'].includes(s.preferredSleep)?s.preferredSleep:'B',reminders:!!s.reminders,waterGoal:Number.isFinite(s.waterGoal)?clamp(Math.round(s.waterGoal),500,4000):2000,rpe:Number.isFinite(s.rpe)?clamp(Math.round(s.rpe),0,10):null,reminderPrefs:validateReminderPrefs(s.reminderPrefs)};
 }
-return {clamp,unionMinutes,resolveSleep,sleepScore,recoveryScore,addEvent,validateBackup};
+return {clamp,unionMinutes,resolveSleep,sleepScore,recoveryScore,addEvent,trainingLoad,validateReminderPrefs,validateBackup};
 });
