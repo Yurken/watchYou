@@ -22,3 +22,6 @@ node_modules/
 user-data/
 private-data/
 rendered-docs/
+
+**/xcuserdata/
+**/.swiftpm/

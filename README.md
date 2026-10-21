@@ -1,51 +1,53 @@
 # watch you
 
-**iPhone + Apple Watch AI 健康助手 · v2.0 需求与交互原型**
+**iPhone + Apple Watch 健康助手**
 
-情绪以 AI 自动推断为主，手动背景与纠正为可选；界面只呈现通用数据来源，不突出设备数量。AI 覆盖今日、睡眠、心率/HRV、恢复、运动、习惯、趋势报告与问答。设置支持自定义 URL、Model、API Key、协议、多组服务、调用参数和外发数据范围。
+情绪以 AI 自动推断为主，无需每日打卡。本地先汇总睡眠、心率、HRV、活动与习惯；模型只在你配置并同意的范围内解释证据。界面不展示固定设备数量对照。展示名称为 **watch you**。
 
-当前仓库包含 M0 原生平台探针（可构建的最小 iPhone/watchOS 配套工程），但不是完成的 App。所有健康观测均为合成示例，情绪推断未做真实效果或医学验证。
+当前可运行的产品是原生 App（`WatchYou.xcworkspace`），不再依赖浏览器原型作为运行时。浏览器原型仍可作为信息架构对照。分数、推断与空状态都是实验性启发式，不是医学诊断。
 
-## 原生开发状态（M0）
+## 原生 App
 
-已建立 `WatchYou.xcworkspace` 与 `Apps/WatchYouiOS`、`Apps/WatchYouWatch`、`Packages/WatchYouCore` 最小工程；模拟器上已验证 WatchConnectivity 双端往返、HealthKit 授权 sheet 真实弹出、Core 单元测试 6/6。真机签名、HealthKit 查询结果分支、覆盖重签与 Keychain 闭环未验证，明细见 [docs/M0_REPORT.md](docs/M0_REPORT.md)。
+打开仓库根目录的 `WatchYou.xcworkspace`，选择共享 scheme：
 
-## 阅读与运行
+- `WatchYouiOS`：iPhone，底栏 **今日 / 睡眠 / 情绪 / AI 助手 / 更多**。更多含心率与 HRV、恢复与压力、运动与活动、生活习惯、趋势与周报、设置；数据来源在设置内。
+- `WatchYouWatch`：手表 **概览 / 睡眠 / 情绪 / 饮水 / 呼吸**。只显示手机生成的摘要；离线饮水与一分钟呼吸写入 outbox，按 id+revision 幂等合并。手表不独立调用模型。
 
-完整需求见 [docs/watch_you_PRD.md](docs/watch_you_PRD.md)，原生开发顺序见 [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md)，实际测试范围见 [tests/TEST_REPORT.md](tests/TEST_REPORT.md)。
+```bash
+# 领域逻辑
+swift test --package-path Packages/WatchYouCore
 
-克隆或下载整个仓库后，在根目录执行：
+# iPhone / Apple Watch（模拟器）
+xcodebuild -workspace WatchYou.xcworkspace -scheme WatchYouiOS \
+  -destination 'generic/platform=iOS Simulator' -configuration Debug build
+xcodebuild -workspace WatchYou.xcworkspace -scheme WatchYouWatch \
+  -destination 'generic/platform=watchOS Simulator' -configuration Debug build
+```
+
+Bundle：`app.watchyou.ios` / `app.watchyou.ios.watch`。HealthKit 只读；密钥进 Keychain，备份不含凭据与外发授权。自定义模型需填写 URL、Model、协议与密钥，并在发送前确认摘要。Demo / 本地规则摘要不会被标成实时模型成功。
+
+未授权、无记录或样本过旧时显示空 / 未知 / 过期，不编造成功心率或成功推断。睡眠与恢复分数在夜晚数或覆盖不足时弃权。
+
+## 需求与阶段
+
+完整需求见 [docs/watch_you_PRD.md](docs/watch_you_PRD.md)，原生任务见 [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md)。
+
+- M0 平台探针：[docs/M0_REPORT.md](docs/M0_REPORT.md)
+- M1 数据与 AI 基础：[docs/M1_REPORT.md](docs/M1_REPORT.md)
+- M2–M4 产品界面、模块推断与手表：[docs/M2_REPORT.md](docs/M2_REPORT.md)
+
+未在本机实测的项目（真机 HealthKit 授权分枝、真实模型 HTTP、手表断连重连）写在各报告的「未验证」节，不写成已通过。
+
+## 浏览器原型（设计对照）
 
 ```bash
 python3 prototype/build.py
 ```
 
-然后用本机浏览器打开 `prototype/index.html`。构建无第三方依赖，会把分离源码合成单文件，便于离线使用。仓库中的初始 `index.html` 使用相邻的 CSS/JS 文件，不能只下载这一份文件；构建后则可以单独复制它。也可以运行 `python3 -m http.server 8000 --bind 127.0.0.1`，在浏览器访问 `http://127.0.0.1:8000/prototype/`。
-
-默认离线演示，不发模型请求。进入“设置 → AI 服务”配置自己的接口，可选 Chat Completions、Responses 或 Messages。连接测试不含健康数据；真实分析前预览接收端与摘要。即使调用真实模型，输入仍然是合成健康数据，不代表接入了 HealthKit。
-
-密钥只在网页内存中保留，不进入 localStorage、备份或源码；刷新后重填。更改接收端清理旧密钥绑定，修改服务/模型/范围撤销旧同意。请求受 CORS、TLS 和服务端能力约束，失败不会假装成功。请勿输入真实敏感健康资料、关闭浏览器安全防护或把此页面作为公开生产客户端使用。
+用浏览器打开 `prototype/index.html`。构建无第三方依赖。默认离线演示，不发模型请求。原型使用合成健康数据，不能代替原生 HealthKit。
 
 ## 文件结构
 
-`docs/` 保存完整 28 章 PRD 与 Codex 原生任务书；`prototype/` 保存可编辑界面、领域逻辑、AI 请求与校验源码；`schemas/` 保存无凭据的契约示例；`tests/` 保存测试脚本与实际结果；`tools/render_prd.py` 用于生成 Word；`assets/` 是截图输出目录。
+`Apps/WatchYouiOS`、`Apps/WatchYouWatch` 为可安装应用；`Packages/WatchYouCore` 为仅依赖 Foundation 的领域包（聚合、分数、证据、校验、备份、手表快照）。`docs/` 为 PRD 与阶段报告；`prototype/` 为可编辑的 HTML 对照；`schemas/` 为无凭据契约示例；`tests/` 为脚本与结果。
 
-Word 和 PNG 是生成产物，本次不纳入 Git 历史，原始导出版保留在已交付的完整设计包中。PRD 第 28 章关于空仓库和未提交的描述是设计阶段快照；本仓库提交已建立，不代表原生实现完成。未替维护者选择代码许可证。
-
-## 重跑检查
-
-```bash
-python3 prototype/build.py
-node tests/core.test.cjs
-node tests/ai-core.test.cjs
-python3 -m pip install -r requirements-dev.txt
-python3 -m playwright install chromium
-# 指定已安装的 Chromium，或使用系统 chromium：
-CHROMIUM_BIN=/path/to/chromium python3 tests/browser_test.py
-```
-
-浏览器测试会输出截图到 `assets/`，并写入 `tests/browser-results.json`。它使用 set_content 和内存存储适配器，所有供应商请求均被 mock 拦截，不验证真实浏览器重启持久化或真实 API。不要将这些检查解释为医疗准确率。
-
-生成截图后可运行 `python3 tools/render_prd.py` 生成 `docs/watch_you_PRD.docx`；需安装 python-docx，中文字体与渲染环境会影响版式。仓库不包含字体文件。
-
-原生开发从签名、HealthKit 最小读取、Watch 通信和 Keychain 模型配置探针开始。每阶段区分已实现、已测试、未验证和阻断项，不把浏览器演示写成实机成果。
+未替维护者选择代码许可证。请勿把真实健康资料或长期密钥写入仓库、日志或 Issue。

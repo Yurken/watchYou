@@ -1,0 +1,207 @@
+Building for debugging...
+Build complete! (0.19秒)
+Test Suite 'All tests' started at 2026-10-21 20:50:08.548.
+Test Suite 'WatchYouCoreTests.xctest' started at 2026-10-21 20:50:08.548.
+Test Suite 'AIConfigSecurityTests' started at 2026-10-21 20:50:08.548.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests test127PrefixAttackerNotLocal]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests test127PrefixAttackerNotLocal]' passed (0.001 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests test172_32NotPrivate]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests test172_32NotPrivate]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testBackupRestoresDemoMode]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testBackupRestoresDemoMode]' passed (0.001 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testCloudMetadataNotAllowed]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testCloudMetadataNotAllowed]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testDefaultModeIsDemo]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testDefaultModeIsDemo]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testDuplicateProfileIDsRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testDuplicateProfileIDsRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testExplicitNoAuthSendsNoAuthorization]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testExplicitNoAuthSendsNoAuthorization]' passed (0.003 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testFullChatEndpointStripsWithoutDuplicatingV1]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testFullChatEndpointStripsWithoutDuplicatingV1]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testGatewayPrefixPreserved]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testGatewayPrefixPreserved]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testInvalidTimeoutRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testInvalidTimeoutRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testJavaScriptSchemeRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testJavaScriptSchemeRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testLoopbackAllowedOnlyInLocalMode]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testLoopbackAllowedOnlyInLocalMode]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testMissingKeyNotSilentlySent]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testMissingKeyNotSilentlySent]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testMissingModelCannotGenerate]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testMissingModelCannotGenerate]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testOutOfRangeTemperatureRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testOutOfRangeTemperatureRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testOversizedURLRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testOversizedURLRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPrivateHTTPAllowedWhenExplicit]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPrivateHTTPAllowedWhenExplicit]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPrivateHTTPRequiresPermission]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPrivateHTTPRequiresPermission]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testProfilesDiscardSecretFields]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testProfilesDiscardSecretFields]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPublicHTTPRejectedEvenWithLocalFlag]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testPublicHTTPRejectedEvenWithLocalFlag]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testTrailingSlashNormalizes]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testTrailingSlashNormalizes]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLCredentialsRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLCredentialsRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLFragmentRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLFragmentRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLQueryRejected]' started.
+Test Case '-[WatchYouCoreTests.AIConfigSecurityTests testURLQueryRejected]' passed (0.000 seconds).
+Test Suite 'AIConfigSecurityTests' passed at 2026-10-21 20:50:08.556.
+	 Executed 24 tests, with 0 failures (0 unexpected) in 0.007 (0.008) seconds
+Test Suite 'CredentialConsentCacheTests' started at 2026-10-21 20:50:08.556.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testAuthTypeChangeInvalidatesPermission]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testAuthTypeChangeInvalidatesPermission]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCacheHitForSameKey]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCacheHitForSameKey]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCacheMissForDifferentKey]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCacheMissForDifferentKey]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testConcurrentPutGetSafety]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testConcurrentPutGetSafety]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCredentialReadFailsForDifferentRecipient]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testCredentialReadFailsForDifferentRecipient]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testDeleteRemovesCredential]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testDeleteRemovesCredential]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testEndpointChangeInvalidatesPermission]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testEndpointChangeInvalidatesPermission]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testExpandingScopeFails]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testExpandingScopeFails]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testFactsFilteredByScope]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testFactsFilteredByScope]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testFingerprintOnlyLastFour]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testFingerprintOnlyLastFour]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testGenerationBumpInvalidatesOldEntries]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testGenerationBumpInvalidatesOldEntries]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testInMemoryCredentialIsolationByRecipient]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testInMemoryCredentialIsolationByRecipient]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testInvalidateByEvidenceID]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testInvalidateByEvidenceID]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testKeychainRoundtripIfAvailable]' started.
+/Users/sen/hit/watchYou/Packages/WatchYouCore/Tests/WatchYouCoreTests/CredentialConsentCacheTests.swift:53: -[WatchYouCoreTests.CredentialConsentCacheTests testKeychainRoundtripIfAvailable] : Test skipped - Keychain unavailable in this environment: keychain("更新凭据失败: -34018")
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testKeychainRoundtripIfAvailable]' skipped (0.001 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testModelChangeInvalidatesPermission]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testModelChangeInvalidatesPermission]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testNarrowingScopePasses]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testNarrowingScopePasses]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testScopeVersionChangeInvalidatesPermission]' started.
+Test Case '-[WatchYouCoreTests.CredentialConsentCacheTests testScopeVersionChangeInvalidatesPermission]' passed (0.000 seconds).
+Test Suite 'CredentialConsentCacheTests' passed at 2026-10-21 20:50:08.560.
+	 Executed 17 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'ProviderProtocolTests' started at 2026-10-21 20:50:08.560.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test401MappedToUnauthorized]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test401MappedToUnauthorized]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test403MappedToUnauthorized]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test403MappedToUnauthorized]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test429MappedToRateLimited]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test429MappedToRateLimited]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test500MappedToTransport]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests test500MappedToTransport]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicExtractText]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicExtractText]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicMaxTokensRejected]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicMaxTokensRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicRequestShape]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testAnthropicRequestShape]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testCancellationPropagates]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testCancellationPropagates]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatCompletionRequest]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatCompletionRequest]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatExtractText]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatExtractText]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatLengthTruncationRejected]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatLengthTruncationRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatTokenFieldSelectable]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testChatTokenFieldSelectable]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testNonJSONErrorMappedToInvalidJSON]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testNonJSONErrorMappedToInvalidJSON]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testOptionalTemperatureIncluded]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testOptionalTemperatureIncluded]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testRedirectRejected]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testRedirectRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesExtractTextFromOutputBlocks]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesExtractTextFromOutputBlocks]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesIncompleteRejected]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesIncompleteRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesOutputTextField]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesOutputTextField]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesRequestShape]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testResponsesRequestShape]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testSafeErrorDoesNotExposeServerResponse]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testSafeErrorDoesNotExposeServerResponse]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testTimeoutUsesProfileTimeout]' started.
+Test Case '-[WatchYouCoreTests.ProviderProtocolTests testTimeoutUsesProfileTimeout]' passed (0.000 seconds).
+Test Suite 'ProviderProtocolTests' passed at 2026-10-21 20:50:08.564.
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'ScoreTests' started at 2026-10-21 20:50:08.564.
+Test Case '-[WatchYouCoreTests.ScoreTests testDeterminismSameInputSameOutput]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testDeterminismSameInputSameOutput]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ScoreTests testRecoveryAbstainsWithoutFourteenDays]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testRecoveryAbstainsWithoutFourteenDays]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ScoreTests testRecoveryFixtureRoundsTo83]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testRecoveryFixtureRoundsTo83]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ScoreTests testSleepAbstainsWithoutBaseline]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testSleepAbstainsWithoutBaseline]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ScoreTests testSleepFixtureRoundsTo92]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testSleepFixtureRoundsTo92]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ScoreTests testTrainingLoadNeedsRPE]' started.
+Test Case '-[WatchYouCoreTests.ScoreTests testTrainingLoadNeedsRPE]' passed (0.000 seconds).
+Test Suite 'ScoreTests' passed at 2026-10-21 20:50:08.564.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'SourceAndSleepTests' started at 2026-10-21 20:50:08.564.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testDayBucketUsesEndDateAcrossMidnight]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testDayBucketUsesEndDateAcrossMidnight]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testDurationUsesAbsoluteTimeIgnoringDST]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testDurationUsesAbsoluteTimeIgnoringDST]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testInBedDoesNotAddToAsleep]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testInBedDoesNotAddToAsleep]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testInvalidIntervalsIgnored]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testInvalidIntervalsIgnored]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testMergingByUUIDIsIdempotent]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testMergingByUUIDIsIdempotent]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testReadOutcomeBranches]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testReadOutcomeBranches]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testSameSourceConflictingStagesBecomeUnknown]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testSameSourceConflictingStagesBecomeUnknown]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testUnionAsleepOverlapsCountOnce]' started.
+Test Case '-[WatchYouCoreTests.SourceAndSleepTests testUnionAsleepOverlapsCountOnce]' passed (0.000 seconds).
+Test Suite 'SourceAndSleepTests' passed at 2026-10-21 20:50:08.565.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ValidatorTests' started at 2026-10-21 20:50:08.565.
+Test Case '-[WatchYouCoreTests.ValidatorTests testCodeFenceStripping]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testCodeFenceStripping]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testEmptySummaryRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testEmptySummaryRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testInsufficientWithCoordinatesRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testInsufficientWithCoordinatesRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testMissingEvidenceReferencesRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testMissingEvidenceReferencesRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testMoreThanThirtyEvidenceIdsRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testMoreThanThirtyEvidenceIdsRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testNonJSONRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testNonJSONRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testOversizedResponseRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testOversizedResponseRejected]' passed (0.001 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testPositiveValenceAllowedWithContext]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testPositiveValenceAllowedWithContext]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testPositiveValenceUnsupportedWithoutContext]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testPositiveValenceUnsupportedWithoutContext]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testSpecificClinicalLabelRejectedWithoutContext]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testSpecificClinicalLabelRejectedWithoutContext]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testUnknownEvidenceIDRejected]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testUnknownEvidenceIDRejected]' passed (0.000 seconds).
+Test Case '-[WatchYouCoreTests.ValidatorTests testValidEmotionEstimateKeepsUnknownValence]' started.
+Test Case '-[WatchYouCoreTests.ValidatorTests testValidEmotionEstimateKeepsUnknownValence]' passed (0.000 seconds).
+Test Suite 'ValidatorTests' passed at 2026-10-21 20:50:08.568.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'WatchYouCoreTests.xctest' passed at 2026-10-21 20:50:08.568.
+	 Executed 88 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.017 (0.020) seconds
+Test Suite 'All tests' passed at 2026-10-21 20:50:08.568.
+	 Executed 88 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.017 (0.020) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

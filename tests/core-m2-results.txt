@@ -1,0 +1,6 @@
+WatchYouCore swift test — 2026-10-21
+command: swift test --package-path Packages/WatchYouCore
+run 1: Test Suite 'All tests' passed at 2026-10-21 22:15:40.094. Executed 109 tests, 1 skipped, 0 failures.
+run 2: Test Suite 'All tests' passed at 2026-10-21 22:15:41.202. Executed 109 tests, 1 skipped, 0 failures.
+skipped: Keychain CLI entitlement -34018 (1 test)
+failures: 0

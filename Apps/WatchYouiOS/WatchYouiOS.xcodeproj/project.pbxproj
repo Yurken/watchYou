@@ -3,38 +3,27 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 70;
 	objects = {
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		000000000000000000000001 /* WatchYouiOS */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = WatchYouiOS;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
+/* Begin PBXBuildFile section */
+		000000000000000000000010 /* WatchYouCore in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000011 /* WatchYouCore */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		000000000000000000000005 /* WatchYouiOS.app */ = {
-			isa = PBXFileReference;
-			explicitFileType = wrapper.application;
-			includeInIndex = 0;
-			path = WatchYouiOS.app;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
+		000000000000000000000005 /* WatchYouiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchYouiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		000000000000000000000001 /* WatchYouiOS */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = WatchYouiOS; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000000000002 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000010 /* WatchYouCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +65,9 @@
 				000000000000000000000001 /* WatchYouiOS */,
 			);
 			name = WatchYouiOS;
+			packageProductDependencies = (
+				000000000000000000000011 /* WatchYouCore */,
+			);
 			productName = WatchYouiOS;
 			productReference = 000000000000000000000005 /* WatchYouiOS.app */;
 			productType = "com.apple.product-type.application";
@@ -95,7 +87,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 00000000000000000000000B /* Build configuration list for "Project" object */;
+			buildConfigurationList = 00000000000000000000000B /* Build configuration list for PBXProject "WatchYouiOS" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -104,8 +96,9 @@
 				Base,
 			);
 			mainGroup = 000000000000000000000003;
-			minimizedProjectFileRepresentations = 1;
-			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				000000000000000000000012 /* XCLocalSwiftPackageReference "../../Packages/WatchYouCore" */,
+			);
 			productRefGroup = 000000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -252,14 +245,18 @@
 		00000000000000000000000E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WatchYouiOS/WatchYouiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "M0 探针仅读取步数以验证授权与查询流程，不做健康分析";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6GGZTLFCD9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "watch you";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "watch you 读取睡眠、心率、HRV、步数、活动能量、锻炼时间和训练记录，用于在本机生成摘要与可选的模型解释。不会写入健康库。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -276,14 +273,18 @@
 		00000000000000000000000F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WatchYouiOS/WatchYouiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "M0 探针仅读取步数以验证授权与查询流程，不做健康分析";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6GGZTLFCD9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "watch you";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "watch you 读取睡眠、心率、HRV、步数、活动能量、锻炼时间和训练记录，用于在本机生成摘要与可选的模型解释。不会写入健康库。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -300,15 +301,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00000000000000000000000B /* Build configuration list for "Project" object */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				00000000000000000000000C /* Debug */,
-				00000000000000000000000D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		000000000000000000000007 /* Build configuration list for PBXNativeTarget "WatchYouiOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -318,7 +310,31 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		00000000000000000000000B /* Build configuration list for PBXProject "WatchYouiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000C /* Debug */,
+				00000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		000000000000000000000012 /* XCLocalSwiftPackageReference "../../Packages/WatchYouCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/WatchYouCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		000000000000000000000011 /* WatchYouCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 000000000000000000000012 /* XCLocalSwiftPackageReference "../../Packages/WatchYouCore" */;
+			productName = WatchYouCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 00000000000000000000000A /* Project object */;
 }

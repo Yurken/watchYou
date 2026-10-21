@@ -8,7 +8,7 @@ public enum ScoreError: Error {
     case invalidInput
 }
 
-public struct SleepScore: Equatable {
+public struct SleepScore: Equatable, Sendable {
     public let value: Int
     public let duration: Double
     public let regularity: Double
@@ -39,7 +39,7 @@ public func sleepScore(
     )
 }
 
-public struct RecoveryScore: Equatable {
+public struct RecoveryScore: Equatable, Sendable {
     public let value: Int
     public let hrvPart: Double
     public let rhrPart: Double
