@@ -414,4 +414,216 @@ final class InferenceLifetimeTests: XCTestCase {
         XCTAssertNil(snapshot.recoveryScore)
         XCTAssertGreaterThanOrEqual(snapshot.hrvValidDays, 14)
     }
+
+    func testBusyDrainLeavesPendingIntact() {
+        var pending: [String: PendingLiveWork] = [:]
+        pending = enqueuePendingLive(pending, task: "mood", inputHash: "h1")
+        XCTAssertFalse(shouldDrainPendingLive(isBusy: true, isDraining: false))
+        XCTAssertFalse(shouldDrainPendingLive(isBusy: false, isDraining: true))
+        XCTAssertEqual(pending["mood"]?.inputHash, "h1")
+        XCTAssertTrue(shouldDrainPendingLive(isBusy: false, isDraining: false))
+        let taken = takePendingLive(pending, task: "mood")
+        XCTAssertEqual(taken.work?.inputHash, "h1")
+        XCTAssertTrue(taken.remaining.isEmpty)
+    }
+
+    func testCorrectedSleepFactsInvalidateDisplayedInference() throws {
+        let now = date(2026, 10, 21, 13, 58)
+        let long = sleepSnapshot(asleep: 420, now: now)
+        let short = sleepSnapshot(asleep: 360, now: now)
+        let hashLong = try taskHash("sleep", snapshot: long, now: now)
+        let hashShort = try taskHash("sleep", snapshot: short, now: now)
+        XCTAssertNotEqual(hashLong, hashShort)
+        let stored = inference(task: "sleep", label: "可能偏平稳", generatedAt: now, inputHash: hashLong, observedEnd: now)
+        XCTAssertNotNil(displayedInference(
+            stored: stored,
+            currentInputHash: hashLong,
+            analysisDay: now,
+            timeZone: tz,
+            snapshotEmpty: false,
+            moduleEnabled: true
+        ))
+        XCTAssertNil(displayedInference(
+            stored: stored,
+            currentInputHash: hashShort,
+            analysisDay: now,
+            timeZone: tz,
+            snapshotEmpty: false,
+            moduleEnabled: true
+        ))
+        XCTAssertEqual(displayedInference(
+            stored: stored,
+            currentInputHash: hashLong,
+            analysisDay: now,
+            timeZone: tz,
+            snapshotEmpty: false,
+            moduleEnabled: true
+        )?.inputHash, stored.inputHash)
+    }
+
+    func testQualityGateBlocksDisplayedInference() {
+        let now = date(2026, 10, 21, 13, 58)
+        let stored = inference(task: "mood", label: "可能偏紧绷", generatedAt: now, inputHash: "h", observedEnd: now)
+        XCTAssertNotNil(displayedInference(
+            stored: stored,
+            currentInputHash: "h",
+            analysisDay: now,
+            timeZone: tz,
+            snapshotEmpty: false,
+            moduleEnabled: true,
+            qualityBlocked: false
+        ))
+        XCTAssertNil(displayedInference(
+            stored: stored,
+            currentInputHash: "h",
+            analysisDay: now,
+            timeZone: tz,
+            snapshotEmpty: false,
+            moduleEnabled: true,
+            qualityBlocked: true
+        ))
+    }
+
+    func testUnsavedContextDraftIsNotSent() {
+        let now = date(2026, 10, 21, 13, 58)
+        var state = AppPersistedState()
+        state = applyingContextNote(state, text: "刚喝了咖啡", at: now)
+        let scopes = Dictionary(uniqueKeysWithValues: AIDataScopes.map { ($0, true) })
+        let saved = factsForTask(
+            task: "mood",
+            snapshot: HealthSnapshot(generatedAt: now, timeZone: tz, hrvValidDays: 7, isEmpty: false, baselineNights: 7),
+            preferences: UserPreferences(),
+            events: [],
+            contextNote: state.contextNote,
+            contextRecordedAt: state.contextNoteRecordedAt,
+            allowedScopes: scopes,
+            now: now
+        )
+        XCTAssertEqual(saved.first { $0.id == "C1" }?.text, "刚喝了咖啡")
+        let draft = "刚喝了茶"
+        XCTAssertEqual(state.contextNote, "刚喝了咖啡")
+        XCTAssertFalse(saved.contains { $0.text == draft })
+        var empty = AppPersistedState()
+        let closed = factsForTask(
+            task: "mood",
+            snapshot: HealthSnapshot(generatedAt: now, timeZone: tz, hrvValidDays: 7, isEmpty: false, baselineNights: 7),
+            preferences: UserPreferences(),
+            events: [],
+            contextNote: empty.contextNote,
+            contextRecordedAt: empty.contextNoteRecordedAt,
+            allowedScopes: scopes,
+            now: now
+        )
+        XCTAssertFalse(closed.contains { $0.id == "C1" })
+        empty = applyingContextNote(empty, text: draft, at: now)
+        XCTAssertEqual(empty.contextNote, draft)
+    }
+
+    func testFailedSaveLeavesStateUnchangedAndRetryAddsOnce() {
+        var memory = AppPersistedState()
+        var disk: AppPersistedState?
+        struct Full: Error {}
+        var fail = true
+        let save: (AppPersistedState) throws -> Void = { next in
+            if fail { throw Full() }
+            disk = next
+        }
+        let event = HabitEvent(id: "w1", kind: "water", amount: 250, createdAt: date(2026, 10, 21, 13, 0))
+        XCTAssertThrowsError(try committingAppState(current: memory, update: { next in
+            let merged = addingEvent(next.events, event, tombstones: next.eventTombstones)
+            next.events = merged.events
+            next.eventTombstones = merged.tombstones
+        }, save: save))
+        XCTAssertTrue(memory.events.isEmpty)
+        XCTAssertNil(disk)
+
+        fail = false
+        memory = try! committingAppState(current: memory, update: { next in
+            let merged = addingEvent(next.events, event, tombstones: next.eventTombstones)
+            next.events = merged.events
+            next.eventTombstones = merged.tombstones
+        }, save: save)
+        XCTAssertEqual(memory.events.count, 1)
+        XCTAssertEqual(disk?.events.count, 1)
+        XCTAssertEqual(disk?.events.first?.amount, 250)
+    }
+
+    func testFailedResetKeepsRecords() {
+        var memory = AppPersistedState()
+        memory.contextNote = "刚喝了咖啡"
+        memory.events = [HabitEvent(id: "w1", kind: "water", amount: 250, createdAt: date(2026, 10, 21, 13, 0))]
+        struct Full: Error {}
+        XCTAssertThrowsError(try committingAppState(current: memory, update: { $0 = resettingAppRecords($0) }, save: { _ in throw Full() }))
+        XCTAssertEqual(memory.contextNote, "刚喝了咖啡")
+        XCTAssertEqual(memory.events.count, 1)
+    }
+
+    private func sleepSnapshot(asleep: Double, now: Date) -> HealthSnapshot {
+        let start = date(2026, 10, 20, 23, 18)
+        let end = date(2026, 10, 21, 7, 2)
+        let night = SleepNight(
+            day: calendar.startOfDay(for: now),
+            mainStart: start,
+            mainEnd: end,
+            asleepMinutes: asleep,
+            awakeMinutes: 12,
+            inBedMinutes: asleep + 12,
+            stageMinutes: [:],
+            naps: [],
+            slices: [],
+            coverage: 1,
+            sourceRef: "health",
+            midpointMinutes: nil
+        )
+        return HealthSnapshot(
+            generatedAt: now,
+            timeZone: tz,
+            lastNight: night,
+            isEmpty: false,
+            baselineNights: 10,
+            analysisDay: calendar.startOfDay(for: now)
+        )
+    }
+
+    private func taskHash(_ task: String, snapshot: HealthSnapshot, now: Date) throws -> String {
+        let facts = factsForTask(
+            task: task,
+            snapshot: snapshot,
+            preferences: UserPreferences(),
+            events: [],
+            contextNote: "",
+            allowedScopes: Dictionary(uniqueKeysWithValues: AIDataScopes.map { ($0, true) }),
+            now: now
+        )
+        let packet = buildEvidencePacket(
+            task: task,
+            window: inferenceObservationWindow(facts: facts, lastNight: snapshot.lastNight, timeZone: tz),
+            baselineValidDays: snapshot.hrvValidDays,
+            facts: facts,
+            allowedScopes: Set(AIDataScopes),
+            question: nil,
+            synthetic: false
+        )
+        let profile = try cleanProfile([
+            "id": "default",
+            "name": "t",
+            "baseURL": "https://model.example/v1",
+            "protocol": "chat",
+            "model": "test-model",
+            "auth": "bearer",
+            "maxTokens": 1200,
+            "tokenField": "max_tokens",
+            "timeout": 45,
+            "allowLocalHTTP": false
+        ])
+        return makeInferenceCacheKey(
+            packet: packet,
+            contextText: sentContextText(facts),
+            profile: profile,
+            promptVersion: promptVersion,
+            sourcePolicyVersion: sourcePolicyVersion,
+            consentVersion: "c",
+            generation: 1
+        ).inputHash
+    }
 }

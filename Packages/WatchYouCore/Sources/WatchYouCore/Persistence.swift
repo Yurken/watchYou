@@ -99,6 +99,32 @@ public func validatePersistedState(_ state: AppPersistedState) throws -> AppPers
     return next
 }
 
+public func applyingContextNote(_ state: AppPersistedState, text: String, at now: Date) -> AppPersistedState {
+    var next = state
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty {
+        next.contextNote = ""
+        next.contextNoteRecordedAt = nil
+    } else {
+        next.contextNote = trimmed
+        next.contextNoteRecordedAt = now
+    }
+    return next
+}
+
+/// Copy, mutate, save, then return the saved value. Failure leaves `current` unchanged.
+public func committingAppState(
+    current: AppPersistedState,
+    update: (inout AppPersistedState) -> Void,
+    save: (AppPersistedState) throws -> Void
+) throws -> AppPersistedState {
+    var next = current
+    update(&next)
+    next.watchSnapshotRevision += 1
+    try save(next)
+    return next
+}
+
 public struct FileAppStore: Sendable {
     public let fileURL: URL
 

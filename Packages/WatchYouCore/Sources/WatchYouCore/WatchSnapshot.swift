@@ -252,5 +252,53 @@ public func displayedWater(snapshot: WatchSnapshot?, pending: [WatchOutboundEven
     return (snapshot?.waterMl ?? 0) + extra
 }
 
+public struct WatchMoodDisplay: Equatable, Sendable {
+    public var label: String
+    public var note: String
+    public var current: Bool
+
+    public init(label: String, note: String, current: Bool) {
+        self.label = label
+        self.note = note
+        self.current = current
+    }
+}
+
+/// Watch-local mood age. A phone-side pass at send time is not enough after midnight offline.
+public func watchMoodDisplay(snapshot: WatchSnapshot?, now: Date) -> WatchMoodDisplay {
+    guard let snapshot else {
+        return WatchMoodDisplay(label: "等待分析", note: "暂无法判断", current: false)
+    }
+    let timeZone = TimeZone(identifier: snapshot.timeZoneIdentifier) ?? .current
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let snapshotDay = snapshot.logicalDay ?? calendar.startOfDay(for: snapshot.generatedAt)
+    let today = calendar.startOfDay(for: now)
+    guard calendar.isDate(snapshotDay, inSameDayAs: today) else {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "M月d日"
+        return WatchMoodDisplay(label: "待更新", note: formatter.string(from: snapshotDay), current: false)
+    }
+    let label = snapshot.moodLabel.isEmpty ? "等待分析" : snapshot.moodLabel
+    let current = label != "等待分析" && label != "暂无法判断"
+    return WatchMoodDisplay(
+        label: label,
+        note: snapshot.moodNote.isEmpty ? "暂无法判断" : snapshot.moodNote,
+        current: current
+    )
+}
+
+public func watchFooterStatus(connectionNote: String, pending: Bool) -> String? {
+    if pending { return "待同步" }
+    switch connectionNote {
+    case "", "iPhone 已连接", "正在连接 iPhone":
+        return nil
+    default:
+        return connectionNote
+    }
+}
+
 public let watchContextKey = "watchyou.snapshot.v1"
 public let watchEventKey = "watchyou.event.v1"

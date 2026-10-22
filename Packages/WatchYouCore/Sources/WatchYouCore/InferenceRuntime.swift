@@ -82,8 +82,10 @@ public func displayedInference(
     analysisDay: Date,
     timeZone: TimeZone,
     snapshotEmpty: Bool,
-    moduleEnabled: Bool
+    moduleEnabled: Bool,
+    qualityBlocked: Bool = false
 ) -> PersistedInference? {
+    guard !qualityBlocked else { return nil }
     guard let stored else { return nil }
     guard isCurrentInference(
         stored,
@@ -155,6 +157,18 @@ public func takePendingLive(
     var next = existing
     let work = next.removeValue(forKey: task)
     return (work, next)
+}
+
+/// Drain only when no request is in flight. Busy callers must leave pending intact.
+public func shouldDrainPendingLive(isBusy: Bool, isDraining: Bool) -> Bool {
+    !isBusy && !isDraining
+}
+
+public func analysisModeLabel(mode: String, auto: Bool) -> String {
+    if mode == "live" {
+        return auto ? "自动分析" : "AI"
+    }
+    return "本地规则"
 }
 
 /// Latest included sample/event time. Calendar-bucket ends are not observations.

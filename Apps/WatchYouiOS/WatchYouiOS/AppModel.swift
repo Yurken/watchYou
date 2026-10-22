@@ -104,9 +104,8 @@ final class AppModel: ObservableObject {
         if requestHealth {
             await requestHealthAccess()
         }
-        state.preferences.hasCompletedOnboarding = true
+        guard commit({ $0.preferences.hasCompletedOnboarding = true }) else { return }
         showOnboarding = false
-        persist()
         await refreshHealth()
     }
 
@@ -158,13 +157,16 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func persist() -> Bool {
-        state.watchSnapshotRevision += 1
+        commit { _ in }
+    }
+
+    @discardableResult
+    func commit(_ update: (inout AppPersistedState) -> Void) -> Bool {
         do {
-            try store.save(state)
+            state = try committingAppState(current: state, update: update, save: store.save)
             pushWatch()
             return true
         } catch {
-            state.watchSnapshotRevision -= 1
             flash("本地保存失败")
             return false
         }
@@ -180,23 +182,25 @@ final class AppModel: ObservableObject {
     }
 
     func addWater(_ amount: Double) {
-        waterUndo = nil
         let event = HabitEvent(id: UUID().uuidString, kind: "water", amount: amount, createdAt: Date())
-        let merged = addingEvent(state.events, event, tombstones: state.eventTombstones)
-        state.events = merged.events
-        state.eventTombstones = merged.tombstones
-        if persist() {
+        if commit({ next in
+            let merged = addingEvent(next.events, event, tombstones: next.eventTombstones)
+            next.events = merged.events
+            next.eventTombstones = merged.tombstones
+        }) {
+            waterUndo = nil
             flash("已记录 \(Int(amount)) ml")
         }
     }
 
     func undoWater() {
         if let restored = waterUndo {
-            let merged = addingEvent(state.events, restored, tombstones: state.eventTombstones)
-            state.events = merged.events
-            state.eventTombstones = merged.tombstones
-            waterUndo = nil
-            if persist() {
+            if commit({ next in
+                let merged = addingEvent(next.events, restored, tombstones: next.eventTombstones)
+                next.events = merged.events
+                next.eventTombstones = merged.tombstones
+            }) {
+                waterUndo = nil
                 flash("已恢复 \(Int(restored.amount)) ml")
             }
             return
@@ -207,7 +211,7 @@ final class AppModel: ObservableObject {
         }
         let current = state.events[index]
         let deletedRevision = current.revision + 1
-        waterUndo = HabitEvent(
+        let restored = HabitEvent(
             id: current.id,
             kind: current.kind,
             amount: current.amount,
@@ -216,42 +220,45 @@ final class AppModel: ObservableObject {
             revision: deletedRevision + 1,
             source: current.source
         )
-        let removed = deletingEvent(state.events, id: current.id, revision: deletedRevision, tombstones: state.eventTombstones)
-        state.events = removed.events
-        state.eventTombstones = removed.tombstones
-        if persist() {
+        if commit({ next in
+            let removed = deletingEvent(next.events, id: current.id, revision: deletedRevision, tombstones: next.eventTombstones)
+            next.events = removed.events
+            next.eventTombstones = removed.tombstones
+        }) {
+            waterUndo = restored
             flash("已撤销 \(Int(current.amount)) ml，再次点击可恢复")
         }
     }
 
     func completeBreath() {
         let event = HabitEvent(id: UUID().uuidString, kind: "mindful", amount: 1, createdAt: Date())
-        let merged = addingEvent(state.events, event, tombstones: state.eventTombstones)
-        state.events = merged.events
-        state.eventTombstones = merged.tombstones
-        if persist() {
+        if commit({ next in
+            let merged = addingEvent(next.events, event, tombstones: next.eventTombstones)
+            next.events = merged.events
+            next.eventTombstones = merged.tombstones
+        }) {
             flash("已记录 1 分钟练习")
         }
     }
 
     func setWaterGoal(_ value: Int) {
-        state.preferences.waterGoalMl = min(4000, max(500, value))
-        persist()
+        _ = commit { $0.preferences.waterGoalMl = min(4000, max(500, value)) }
     }
 
     func setSleepGoal(_ value: Int) {
-        state.preferences.sleepGoalMinutes = min(600, max(360, value))
-        persist()
+        guard commit({ $0.preferences.sleepGoalMinutes = min(600, max(360, value)) }) else { return }
         Task { await refreshHealth() }
     }
 
     func setRPE(workoutID: UUID, value: Int?) {
-        if let value, (0...10).contains(value) {
-            state.rpeByWorkout[workoutID.uuidString] = value
-        } else {
-            state.rpeByWorkout.removeValue(forKey: workoutID.uuidString)
+        let saved = commit { next in
+            if let value, (0...10).contains(value) {
+                next.rpeByWorkout[workoutID.uuidString] = value
+            } else {
+                next.rpeByWorkout.removeValue(forKey: workoutID.uuidString)
+            }
         }
-        persist()
+        guard saved else { return }
         Task { await refreshHealth() }
     }
 
@@ -264,35 +271,27 @@ final class AppModel: ObservableObject {
             tags: tags,
             createdAt: Date()
         )
-        state.feedback.insert(item, at: 0)
-        persist()
+        guard commit({ $0.feedback.insert(item, at: 0) }) else { return }
         flash("感受已保存")
         if config.auto {
             Task { await runAI(task: "mood", automatic: true, force: true) }
         }
     }
 
-    func saveContextNote() {
-        let trimmed = state.contextNote.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            state.contextNote = ""
-            state.contextNoteRecordedAt = nil
-        } else {
-            state.contextNote = trimmed
-            state.contextNoteRecordedAt = Date()
-        }
-        persist()
+    @discardableResult
+    func saveContextNote(_ text: String) -> Bool {
+        guard commit({ $0 = applyingContextNote($0, text: text, at: Date()) }) else { return false }
         if config.auto {
             Task {
                 await runAI(task: "today", automatic: true, force: true)
                 await runAI(task: "mood", automatic: true, force: true)
             }
         }
+        return true
     }
 
     func deleteFeedback(_ id: String) {
-        state.feedback.removeAll { $0.id == id }
-        persist()
+        guard commit({ $0.feedback.removeAll { $0.id == id } }) else { return }
         if config.auto {
             Task { await runAI(task: "mood", automatic: true, force: true) }
         }
@@ -303,13 +302,23 @@ final class AppModel: ObservableObject {
     }
 
     func inference(_ task: String) -> PersistedInference? {
-        displayedInference(
+        let facts = currentFacts(task: task)
+        let blocked = qualityGate(
+            task: task,
+            snapshot: snapshot,
+            config: config,
+            facts: facts,
+            hasContext: hasSendableContext(facts),
+            now: Date()
+        ) != nil
+        return displayedInference(
             stored: state.inferences[task],
             currentInputHash: currentDisplayHash(task),
             analysisDay: snapshot.analysisDay ?? Date(),
             timeZone: snapshot.timeZone,
             snapshotEmpty: snapshot.isEmpty && task != "assistant" && task != "habits",
-            moduleEnabled: config.modules[task] != false
+            moduleEnabled: config.modules[task] != false,
+            qualityBlocked: blocked
         )
     }
 
@@ -333,11 +342,6 @@ final class AppModel: ObservableObject {
 
         if config.mode != "live" {
             applyLocal(task: task, facts: facts, question: question)
-            if task == "assistant", !question.isEmpty {
-                state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
-                state.chat.append(ChatTurn(role: "assistant", text: "【本地规则摘要，并非对你的问题进行模型推理】\n" + (state.inferences[task]?.result.summary ?? ""), createdAt: Date()))
-                persist()
-            }
             if !automatic { flash("已更新本地规则摘要，未调用模型") }
             return
         }
@@ -392,8 +396,11 @@ final class AppModel: ObservableObject {
     func approveConsent() async {
         guard let request = consentRequest else { return }
         do {
-            state.consent = try makePermission(profile: config.activeProfile, scopes: config.scopes, now: Date())
-            persist()
+            let permission = try makePermission(profile: config.activeProfile, scopes: config.scopes, now: Date())
+            guard commit({ $0.consent = permission }) else {
+                consentRequest = nil
+                return
+            }
         } catch {
             flash(userFacingError(error))
             consentRequest = nil
@@ -468,29 +475,30 @@ final class AppModel: ObservableObject {
                 )
                 secretDraft = ""
             }
-            var profiles = config.profiles
-            if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
-                profiles[index] = profile
-            } else {
-                profiles.append(profile)
-            }
             let old = config.activeProfile
             let destinationChanged = old.baseURL != profile.baseURL || old.protocolName != profile.protocolName || old.auth != profile.auth || old.model != profile.model || config.scopes != scopes
-            state.aiConfig = config.replacing(
-                profiles: profiles,
-                mode: mode,
-                auto: auto,
-                dailyLimit: dailyLimit,
-                modules: modules,
-                scopes: scopes
-            )
+            guard commit({ next in
+                var profiles = next.aiConfig.profiles
+                if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
+                    profiles[index] = profile
+                } else {
+                    profiles.append(profile)
+                }
+                next.aiConfig = next.aiConfig.replacing(
+                    profiles: profiles,
+                    mode: mode,
+                    auto: auto,
+                    dailyLimit: dailyLimit,
+                    modules: modules,
+                    scopes: scopes
+                )
+                next.generation += 1
+                if destinationChanged {
+                    next.consent = nil
+                    next.inferences = [:]
+                }
+            }) else { return }
             invalidateLiveWork()
-            state.generation += 1
-            if destinationChanged {
-                state.consent = nil
-                state.inferences = [:]
-            }
-            persist()
             flash("AI 配置已保存；尚未发送健康摘要")
         } catch {
             flash(userFacingError(error))
@@ -526,9 +534,9 @@ final class AppModel: ObservableObject {
     func importData(_ data: Data) {
         do {
             let imported = try importBackup(data)
+            guard commit({ $0 = applyingImportedBackup(current: $0, imported: imported) }) else { return }
             invalidateLiveWork()
-            state = applyingImportedBackup(current: state, imported: imported)
-            persist()
+            waterUndo = nil
             Task { await refreshHealth() }
             flash("备份已恢复")
         } catch {
@@ -537,10 +545,9 @@ final class AppModel: ObservableObject {
     }
 
     func resetRecords() {
+        guard commit({ $0 = resettingAppRecords($0) }) else { return }
         invalidateLiveWork()
         waterUndo = nil
-        state = resettingAppRecords(state)
-        persist()
         flash("已清除本应用记录")
     }
 
@@ -559,13 +566,13 @@ final class AppModel: ObservableObject {
     }
 
     private func currentDisplayHash(_ task: String) -> String? {
-        guard task == "today" || task == "mood" else {
-            return state.inferences[task]?.inputHash
-        }
+        let question = task == "assistant"
+            ? (state.chat.last(where: { $0.role == "user" })?.text ?? "")
+            : ""
         return liveCacheKey(
             task: task,
             facts: currentFacts(task: task),
-            question: "",
+            question: question,
             profile: config.activeProfile
         ).inputHash
     }
@@ -591,10 +598,11 @@ final class AppModel: ObservableObject {
     }
 
     private func drainPendingLive() async {
-        guard !drainingPending else { return }
+        guard shouldDrainPendingLive(isBusy: aiBusy != nil, isDraining: drainingPending) else { return }
         drainingPending = true
         defer { drainingPending = false }
-        while let task = pendingLive.keys.sorted().first {
+        while shouldDrainPendingLive(isBusy: aiBusy != nil, isDraining: false),
+              let task = pendingLive.keys.sorted().first {
             let taken = takePendingLive(pendingLive, task: task)
             pendingLive = taken.remaining
             guard let work = taken.work else { continue }
@@ -659,7 +667,16 @@ final class AppModel: ObservableObject {
             originalGeneratedAt: Date(),
             cacheHit: false,
             inputHash: key.inputHash,
-            window: key.window
+            window: key.window,
+            extra: { next in
+                guard task == "assistant", !question.isEmpty else { return }
+                next.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
+                next.chat.append(ChatTurn(
+                    role: "assistant",
+                    text: "【本地规则摘要，并非对你的问题进行模型推理】\n" + result.summary,
+                    createdAt: Date()
+                ))
+            }
         )
     }
 
@@ -695,13 +712,13 @@ final class AppModel: ObservableObject {
                     originalGeneratedAt: cached.originalGeneratedAt,
                     cacheHit: true,
                     inputHash: key.inputHash,
-                    window: key.window
+                    window: key.window,
+                    extra: { next in
+                        guard task == "assistant", !question.isEmpty else { return }
+                        next.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
+                        next.chat.append(ChatTurn(role: "assistant", text: cached.result.summary, createdAt: Date()))
+                    }
                 )
-                if task == "assistant", !question.isEmpty {
-                    state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
-                    state.chat.append(ChatTurn(role: "assistant", text: cached.result.summary, createdAt: Date()))
-                    persist()
-                }
                 if !automatic { flash("相同摘要已分析过，未重复调用模型") }
             }
             await drainPendingLive()
@@ -753,12 +770,13 @@ final class AppModel: ObservableObject {
                         originalGeneratedAt: original,
                         cacheHit: false,
                         inputHash: key.inputHash,
-                        window: key.window
+                        window: key.window,
+                        extra: { next in
+                            guard task == "assistant", !question.isEmpty else { return }
+                            next.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
+                            next.chat.append(ChatTurn(role: "assistant", text: parsed.summary, createdAt: Date()))
+                        }
                     )
-                    if task == "assistant", !question.isEmpty {
-                        state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
-                        state.chat.append(ChatTurn(role: "assistant", text: parsed.summary, createdAt: Date()))
-                    }
                     log(kind: task, status: "success", model: profile.model, facts: facts, latency: Int(Date().timeIntervalSince(started) * 1000))
                     if !automatic { flash("已收到模型分析") }
                 }
@@ -771,8 +789,11 @@ final class AppModel: ObservableObject {
                     aiError = userFacingError(error)
                     log(kind: task, status: "failed", model: profile.model, facts: facts, latency: nil)
                     if task == "assistant", !question.isEmpty {
-                        state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
-                        state.chat.append(ChatTurn(role: "assistant", text: "本次没有得到有效回答：\(aiError ?? "")", createdAt: Date()))
+                        let message = "本次没有得到有效回答：\(aiError ?? "")"
+                        _ = commit { next in
+                            next.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
+                            next.chat.append(ChatTurn(role: "assistant", text: message, createdAt: Date()))
+                        }
                     }
                     if !automatic { flash(aiError ?? "分析失败") }
                 }
@@ -796,24 +817,28 @@ final class AppModel: ObservableObject {
         originalGeneratedAt: Date,
         cacheHit: Bool,
         inputHash: String,
-        window: TimeWindow
+        window: TimeWindow,
+        extra: ((inout AppPersistedState) -> Void)? = nil
     ) {
-        state.inferences[task] = applyCachedInference(
-            result: result,
-            facts: facts,
-            model: model,
-            mode: mode,
-            originalGeneratedAt: originalGeneratedAt,
-            servedAt: Date(),
-            cacheHit: cacheHit,
-            inputHash: inputHash,
-            window: window,
-            observedAt: inferenceObservedAt(facts: facts) ?? originalGeneratedAt,
-            task: task
-        )
-        lastLiveHash[task] = inputHash
-        persist()
-        pushWatch()
+        let saved = commit { next in
+            next.inferences[task] = applyCachedInference(
+                result: result,
+                facts: facts,
+                model: model,
+                mode: mode,
+                originalGeneratedAt: originalGeneratedAt,
+                servedAt: Date(),
+                cacheHit: cacheHit,
+                inputHash: inputHash,
+                window: window,
+                observedAt: inferenceObservedAt(facts: facts) ?? originalGeneratedAt,
+                task: task
+            )
+            extra?(&next)
+        }
+        if saved {
+            lastLiveHash[task] = inputHash
+        }
     }
 
     private func accountCall() throws {
@@ -856,7 +881,6 @@ final class AppModel: ObservableObject {
         }
         if ack != nil {
             pushWatch()
-            flash("手表已同步 \(event.kind == "water" ? "\(Int(event.amount)) ml 饮水" : "一次呼吸练习")")
         } else {
             flash("本地保存失败")
         }
@@ -865,17 +889,9 @@ final class AppModel: ObservableObject {
 
     private func pushWatch() {
         connectivityNote = connectivity.note
-        let shown = displayedInferences(
-            stored: state.inferences,
-            currentHashes: [
-                "today": currentDisplayHash("today") ?? "",
-                "mood": currentDisplayHash("mood") ?? ""
-            ],
-            analysisDay: snapshot.analysisDay ?? Date(),
-            timeZone: snapshot.timeZone,
-            snapshotEmpty: snapshot.isEmpty,
-            modules: config.modules
-        )
+        var shown: [String: PersistedInference] = [:]
+        if let today = inference("today") { shown["today"] = today }
+        if let mood = inference("mood") { shown["mood"] = mood }
         let payload = makeWatchSnapshot(
             snapshot: snapshot,
             inferences: shown,

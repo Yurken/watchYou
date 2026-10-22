@@ -113,6 +113,7 @@ struct MoodView: View {
     @State private var showEvidence = false
     @State private var note = ""
     @State private var valence: Double = 0
+    @State private var contextDraft = ""
 
     var body: some View {
         let inference = model.inference("mood")
@@ -123,15 +124,15 @@ struct MoodView: View {
                     Label("AI 情绪洞察", systemImage: "face.smiling")
                         .font(.system(size: 12, weight: .semibold))
                     Spacer()
-                    WYPill(text: "自动分析", kind: .hero)
+                    WYPill(text: analysisModeLabel(mode: model.config.mode, auto: model.config.auto), kind: .hero)
                 }
-                Circle()
-                    .fill(
-                        RadialGradient(colors: [Color(hex: 0xE5EFD8), Color(hex: 0xA9D0C2), Color(hex: 0x5D8E9E)], center: .topLeading, startRadius: 4, endRadius: 50)
-                    )
-                    .frame(width: 78, height: 78)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+                EmotionStickerView(
+                    kind: emotionStickerKind(for: emotion),
+                    size: 108,
+                    animated: emotionStickerPlays(emotion)
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
                 Text(emotion?.label ?? "暂无法判断")
                     .font(.system(size: 22, weight: .semibold))
                     .frame(maxWidth: .infinity)
@@ -170,7 +171,10 @@ struct MoodView: View {
                 Text("可以补充当时在做什么，或记下不同的感受。")
                     .font(.system(size: 12))
                     .foregroundStyle(WY.muted)
-                Button("补充背景 / 纠正判断") { showContext = true }
+                Button("补充背景 / 纠正判断") {
+                    contextDraft = model.state.contextNote
+                    showContext = true
+                }
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(WY.blue)
             }
@@ -184,7 +188,7 @@ struct MoodView: View {
             NavigationStack {
                 Form {
                     Section("可选背景") {
-                        TextField("例如：刚喝了咖啡。请勿填入高度敏感信息。", text: $model.state.contextNote, axis: .vertical)
+                        TextField("例如：刚喝了咖啡。请勿填入高度敏感信息。", text: $contextDraft, axis: .vertical)
                             .lineLimit(3...6)
                     }
                     Section("可选纠正") {
@@ -202,8 +206,9 @@ struct MoodView: View {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { showContext = false } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("保存背景") {
-                            model.saveContextNote()
-                            showContext = false
+                            if model.saveContextNote(contextDraft) {
+                                showContext = false
+                            }
                         }
                     }
                 }

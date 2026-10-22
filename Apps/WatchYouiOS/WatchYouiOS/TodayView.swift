@@ -127,7 +127,8 @@ struct TodayView: View {
     }
 
     private var moodCard: some View {
-        Button {
+        let emotion = model.inference("mood")?.result.emotion
+        return Button {
             model.tab = .mood
         } label: {
             WYCard {
@@ -135,15 +136,25 @@ struct TodayView: View {
                     Text("AI 情绪洞察")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
-                    WYPill(text: "自动推断", kind: .green)
+                    WYPill(text: analysisModeLabel(mode: model.config.mode, auto: model.config.auto), kind: .green)
                 }
-                Text(model.inference("mood")?.result.emotion?.label ?? "暂无法判断")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(WY.ink)
-                Text(model.inference("mood")?.result.summary ?? "等待分析")
-                    .font(.system(size: 12))
-                    .foregroundStyle(WY.muted)
-                    .lineSpacing(4)
+                HStack(alignment: .center, spacing: 14) {
+                    EmotionStickerView(
+                        kind: emotionStickerKind(for: emotion),
+                        size: 64,
+                        animated: emotionStickerPlays(emotion)
+                    )
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(emotion?.label ?? "暂无法判断")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(WY.ink)
+                        Text(model.inference("mood")?.result.summary ?? "等待分析")
+                            .font(.system(size: 12))
+                            .foregroundStyle(WY.muted)
+                            .lineSpacing(4)
+                    }
+                    Spacer(minLength: 0)
+                }
                 Text("查看状态、依据与趋势 →")
                     .font(.system(size: 11))
                     .foregroundStyle(WY.blue)

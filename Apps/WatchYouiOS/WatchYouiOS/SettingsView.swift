@@ -6,6 +6,8 @@ struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var importer = false
     @State private var exportURL: URL?
+    @State private var confirmReset = false
+    @State private var pendingImport: Data?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -16,14 +18,6 @@ struct SettingsView: View {
                     get: { model.preferences.sleepGoalMinutes },
                     set: { model.setSleepGoal($0) }
                 ), in: 360...600, step: 15)
-                Toggle("轻量提醒总开关（仅保存偏好，不创建系统通知）", isOn: Binding(
-                    get: { model.preferences.remindersEnabled },
-                    set: {
-                        model.state.preferences.remindersEnabled = $0
-                        model.persist()
-                    }
-                ))
-                .font(.system(size: 13))
                 Button("健康数据接入") { Task { await model.requestHealthAccess() } }
                     .font(.system(size: 14))
                 Button("数据来源") { model.morePath.append("sources") }
@@ -57,7 +51,7 @@ struct SettingsView: View {
                 TitleRow(title: "本地数据", systemImage: "lock.fill")
                 Button("导出应用备份") { exportBackup() }
                 Button("导入应用备份") { importer = true }
-                Button("清除本应用记录") { model.resetRecords() }
+                Button("清除本应用记录") { confirmReset = true }
             }
             .font(.system(size: 14))
             WYNotice(text: "备份不含密钥和外发授权。健康库中的原始记录不会被导出或覆盖。")
@@ -69,13 +63,33 @@ struct SettingsView: View {
                 let access = url.startAccessingSecurityScopedResource()
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
                 do {
-                    model.importData(try Data(contentsOf: url))
+                    pendingImport = try Data(contentsOf: url)
                 } catch {
                     model.flash("无法读取备份文件")
                 }
             case .failure:
                 model.flash("未选择备份文件")
             }
+        }
+        .alert("清除本应用记录？", isPresented: $confirmReset) {
+            Button("清除", role: .destructive) { model.resetRecords() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("饮水、感受和聊天会删除。")
+        }
+        .alert("用备份替换当前记录？", isPresented: Binding(
+            get: { pendingImport != nil },
+            set: { if !$0 { pendingImport = nil } }
+        )) {
+            Button("替换", role: .destructive) {
+                if let data = pendingImport {
+                    model.importData(data)
+                }
+                pendingImport = nil
+            }
+            Button("取消", role: .cancel) { pendingImport = nil }
+        } message: {
+            Text("当前应用记录会被这份备份替换。")
         }
         .sheet(item: Binding(
             get: { exportURL.map { IdentifiedURL(url: $0) } },

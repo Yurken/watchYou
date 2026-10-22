@@ -317,4 +317,59 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(queue.first?.revision, 2)
         XCTAssertEqual(queue.count, 1)
     }
+
+    func testWatchMoodBecomesPendingAfterLocalMidnight() {
+        let yesterday = date(2026, 10, 21, 13, 58)
+        let today = date(2026, 10, 22, 8, 0)
+        let mood = PersistedInference(
+            task: "mood",
+            result: AIResult(
+                summary: "s",
+                evidenceIds: ["H1"],
+                uncertainties: ["u"],
+                suggestions: [],
+                emotion: AIEmotion(
+                    status: "estimated",
+                    label: "可能偏紧绷",
+                    arousal: "moderate",
+                    valence: "unknown",
+                    evidenceStrength: "有限"
+                )
+            ),
+            facts: [],
+            model: "m",
+            mode: "live",
+            generatedAt: yesterday,
+            observedEnd: yesterday,
+            inputHash: "h",
+            window: TimeWindow(start: yesterday, end: yesterday, timeZone: tz)
+        )
+        let snapshot = makeWatchSnapshot(
+            snapshot: HealthSnapshot(
+                generatedAt: yesterday,
+                timeZone: tz,
+                lastSampleAt: yesterday,
+                isEmpty: false,
+                baselineNights: 10
+            ),
+            inferences: ["mood": mood],
+            events: [],
+            preferences: UserPreferences(),
+            now: yesterday
+        )
+        let current = watchMoodDisplay(snapshot: snapshot, now: yesterday)
+        XCTAssertEqual(current.label, "可能偏紧绷")
+        XCTAssertTrue(current.current)
+        let nextDay = watchMoodDisplay(snapshot: snapshot, now: today)
+        XCTAssertEqual(nextDay.label, "待更新")
+        XCTAssertEqual(nextDay.note, "10月21日")
+        XCTAssertFalse(nextDay.current)
+    }
+
+    func testWatchFooterOmitsConnectedNote() {
+        XCTAssertNil(watchFooterStatus(connectionNote: "iPhone 已连接", pending: false))
+        XCTAssertNil(watchFooterStatus(connectionNote: "正在连接 iPhone", pending: false))
+        XCTAssertEqual(watchFooterStatus(connectionNote: "iPhone 已连接", pending: true), "待同步")
+        XCTAssertEqual(watchFooterStatus(connectionNote: "请在 iPhone 安装 watch you", pending: false), "请在 iPhone 安装 watch you")
+    }
 }

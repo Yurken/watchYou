@@ -93,24 +93,25 @@ struct ContentView: View {
     }
 
     private var moodPage: some View {
-        ScrollView {
+        let mood = watchMoodDisplay(snapshot: snapshot, now: Date())
+        return ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 Text("情绪")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Circle()
-                    .fill(RadialGradient(
-                        colors: [Color(red: 0.90, green: 0.94, blue: 0.85), Color(red: 0.37, green: 0.56, blue: 0.62)],
-                        center: .topLeading,
-                        startRadius: 4,
-                        endRadius: 40
-                    ))
-                    .frame(width: 52, height: 52)
-                    .frame(maxWidth: .infinity)
-                Text(snapshot?.moodLabel ?? "等待分析")
+                WatchEmotionSticker(
+                    kind: emotionStickerKind(
+                        status: mood.current ? "estimated" : "insufficient",
+                        label: mood.label
+                    ),
+                    size: 56,
+                    animated: mood.current
+                )
+                .frame(maxWidth: .infinity)
+                Text(mood.label)
                     .font(.system(size: 20, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                Text(snapshot?.moodNote ?? "暂无法判断")
+                Text(mood.note)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -138,9 +139,6 @@ struct ContentView: View {
                 ProgressView(value: min(1, Double(model.waterMl) / Double(max(model.waterGoal, 1))))
                 Button("+ 250 ml") { model.addWater(250) }
                 Button("+ 150 ml") { model.addWater(150) }
-                Text(model.pending.contains(where: { $0.kind == "water" }) ? "待同步" : "记录会同步到 iPhone")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
                 footer
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -185,11 +183,8 @@ struct ContentView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(model.note)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            if !model.pending.isEmpty {
-                Text("待同步")
+            if let status = watchFooterStatus(connectionNote: model.note, pending: !model.pending.isEmpty) {
+                Text(status)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -199,5 +194,29 @@ struct ContentView: View {
             }
         }
         .padding(.top, 6)
+    }
+}
+
+private struct WatchEmotionSticker: View {
+    var kind: EmotionStickerKind
+    var size: CGFloat
+    var animated: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let loop = [0, 1, 2, 3, 4, 0]
+    private let frameDuration = 2.0 / 6.0
+
+    var body: some View {
+        let plays = animated && !reduceMotion
+        TimelineView(.periodic(from: .now, by: plays ? frameDuration : 86_400)) { context in
+            let index = plays
+                ? loop[Int(context.date.timeIntervalSinceReferenceDate / frameDuration) % loop.count]
+                : 0
+            Image("Emotion-\(kind.rawValue)-\(index)")
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+        }
     }
 }

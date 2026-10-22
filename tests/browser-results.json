@@ -1,6 +1,6 @@
 {
-  "executed": "2026-10-21T11:21:29Z",
-  "passed": 93,
+  "executed": "2026-10-22T05:28:29Z",
+  "passed": 101,
   "tests": [
     {
       "test": "brand is watch you",
@@ -71,6 +71,26 @@
       "status": "PASS"
     },
     {
+      "test": "sticker maps physiology and empty labels",
+      "status": "PASS"
+    },
+    {
+      "test": "mood hero uses nervous sticker for 可能偏紧绷",
+      "status": "PASS"
+    },
+    {
+      "test": "today mood card uses nervous sticker",
+      "status": "PASS"
+    },
+    {
+      "test": "watch mood uses nervous sticker",
+      "status": "PASS"
+    },
+    {
+      "test": "sleep page has no emotion sticker",
+      "status": "PASS"
+    },
+    {
       "test": "optional text excluded unless its scope is enabled",
       "status": "PASS"
     },
@@ -83,11 +103,23 @@
       "status": "PASS"
     },
     {
+      "test": "baseline uses calm sticker",
+      "status": "PASS"
+    },
+    {
       "test": "stale emotion abstains",
       "status": "PASS"
     },
     {
+      "test": "stale uses calm sticker",
+      "status": "PASS"
+    },
+    {
       "test": "empty emotion abstains",
+      "status": "PASS"
+    },
+    {
+      "test": "empty uses calm sticker",
       "status": "PASS"
     },
     {

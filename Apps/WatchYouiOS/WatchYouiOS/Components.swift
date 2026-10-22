@@ -320,3 +320,28 @@ struct EvidenceSheet: View {
         }
     }
 }
+
+struct EmotionStickerView: View {
+    var kind: EmotionStickerKind
+    var size: CGFloat
+    var animated: Bool = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let loop = [0, 1, 2, 3, 4, 0]
+    private let frameDuration = 2.0 / 6.0
+
+    var body: some View {
+        let plays = animated && !reduceMotion
+        TimelineView(.periodic(from: .now, by: plays ? frameDuration : 86_400)) { context in
+            let index = plays
+                ? loop[Int(context.date.timeIntervalSinceReferenceDate / frameDuration) % loop.count]
+                : 0
+            Image("Emotion-\(kind.rawValue)-\(index)")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+        }
+    }
+}
