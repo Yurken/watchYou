@@ -149,7 +149,13 @@ struct OnboardingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
+            Image("BrandLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 72, height: 72)
+                .accessibilityLabel("watch you")
             Text("HEALTH, UNDERSTOOD BY AI.")
+                .padding(.top, 18)
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(2)
                 .foregroundStyle(Color(hex: 0x6C8493))

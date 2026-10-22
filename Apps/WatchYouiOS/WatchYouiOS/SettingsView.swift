@@ -87,6 +87,11 @@ struct SettingsView: View {
 
     private var about: some View {
         WYCard {
+            Image("BrandLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 36, height: 36)
+                .accessibilityHidden(true)
             TitleRow(title: "关于 watch you", systemImage: "info.circle")
             Text("把睡眠、心率与恢复汇总成可查看的洞察。分析供日常参考，不会改写健康库。")
                 .font(.system(size: 12))
