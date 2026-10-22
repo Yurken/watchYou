@@ -87,7 +87,7 @@ struct HeartView: View {
                             .font(.system(size: 11)).foregroundStyle(WY.muted)
                     }
                 }
-                WYNotice(text: "每条记录保留采样时间与来源。存在冲突时不直接平均，也不替代系统安全功能。", warn: true)
+                WYNotice(text: "冲突记录会按来源偏好选择，不直接平均。")
                 AIModuleCard(task: "heart", title: "心率与 HRV")
             }
         }
@@ -109,14 +109,14 @@ struct RecoveryView: View {
                     HStack(spacing: 18) {
                         ScoreRing(value: model.snapshot.recoveryScore?.value, label: "恢复参考")
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(model.snapshot.recoveryScore == nil ? "等待足够基线" : "看懂变化的依据")
+                            Text(model.snapshot.recoveryScore == nil ? "正在建立基线" : "看懂变化的依据")
                                 .font(.system(size: 16, weight: .medium))
-                            Text(model.snapshot.recoveryScore == nil ? "至少 14 个有效日。缺少条件就不输出数值。" : "不是身体电量，也不是疾病风险概率。")
+                            Text(model.snapshot.recoveryScore == nil ? "HRV \(model.snapshot.hrvValidDays) 日 · 静息心率 \(model.snapshot.rhrValidDays) 日" : "查看构成")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color(hex: 0xC5D8E2))
                         }
                     }
-                    Text("基线：此前 28 天 · 有效日 \(model.snapshot.hrvValidDays) · 算法 recovery-experimental-0.1")
+                    Text("基线：HRV \(model.snapshot.hrvValidDays) 日 · 静息心率 \(model.snapshot.rhrValidDays) 日")
                         .font(.system(size: 11))
                         .foregroundStyle(Color(hex: 0xA9C2CF))
                 }
@@ -128,7 +128,7 @@ struct RecoveryView: View {
                 labeled("夜间 HRV", model.snapshot.nocturnalHRV.map { "\(Int($0.rounded())) ms" } ?? "—")
                 labeled("静息心率", model.snapshot.restingHeartRate.map { "\(WYFormat.bpm($0)) bpm" } ?? "—")
             }
-            WYNotice(text: "条件不足时停止评估。运动后、样本过旧或情境不明不会被解释为情绪。")
+            WYNotice(text: "缺少 HRV 或静息心率历史时不显示恢复参考。")
             AIModuleCard(task: "recovery", title: "恢复解释")
         }
         .sheet(isPresented: $showScore) { ScoreExplainSheet(kind: .recovery) }
@@ -275,9 +275,6 @@ struct HabitsView: View {
                 Button("撤销上一次") { model.undoWater() }
                     .font(.system(size: 12))
                     .foregroundStyle(WY.blue)
-                Text("目标由你设置，不是通用医学建议。")
-                    .font(.system(size: 11))
-                    .foregroundStyle(WY.muted)
             }
             WYCard {
                 TitleRow(title: "一分钟，回到当下", systemImage: "wind")
@@ -300,9 +297,6 @@ struct HabitsView: View {
                 WYPrimaryButton(title: breathing ? "停止 · \(max(0, 60 - elapsed))s" : "开始 1 分钟练习") {
                     breathing ? stop(false) : start()
                 }
-                Text("仅作节奏引导，不会声称测得新的 HRV。")
-                    .font(.system(size: 11))
-                    .foregroundStyle(WY.muted)
             }
             AIModuleCard(task: "habits", title: "习惯建议")
         }
@@ -403,11 +397,8 @@ struct SourcesView: View {
                             .foregroundStyle(WY.muted)
                     }
                 }
-                Text("名称、型号不能单独作为永久物理设备标识。")
-                    .font(.system(size: 11))
-                    .foregroundStyle(WY.muted)
             }
-            WYNotice(text: "观测与推断分开保存。改变本 App 的来源偏好不会改写 Apple 健康。")
+            WYNotice(text: "改变来源偏好不会改写 Apple 健康。")
         }
     }
 }

@@ -7,7 +7,7 @@ import WatchYouCore
 final class WatchAppModel: NSObject, ObservableObject {
     @Published var snapshot: WatchSnapshot?
     @Published var pending: [WatchOutboundEvent] = []
-    @Published var note = "尚未连接 iPhone"
+    @Published var note = "等待 iPhone"
     @Published var toast: String?
     @Published var breathing = false
     @Published var elapsed = 0
@@ -151,7 +151,7 @@ final class WatchAppModel: NSObject, ObservableObject {
     private func refreshNote(_ session: WCSession) {
         let installed = session.isCompanionAppInstalled
         note = session.activationState == .activated
-            ? (session.isReachable ? "iPhone 已连接" : (installed ? "iPhone 未在近旁，事件会排队" : "请在 iPhone 安装 watch you"))
+            ? (session.isReachable ? "iPhone 已连接" : (installed ? "待同步" : "请在 iPhone 安装 watch you"))
             : "正在连接 iPhone"
     }
 

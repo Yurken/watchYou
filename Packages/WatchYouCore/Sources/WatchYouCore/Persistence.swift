@@ -29,6 +29,7 @@ public func exportBackup(state: AppPersistedState, now: Date) throws -> Data {
     copy.aiConfig = copy.aiConfig.replacing(mode: "demo")
     copy.chat = []
     copy.contextNote = ""
+    copy.contextNoteRecordedAt = nil
     let envelope = AppBackupEnvelope(exportedAt: now, state: copy)
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601
@@ -94,6 +95,7 @@ public func validatePersistedState(_ state: AppPersistedState) throws -> AppPers
     next.logs = Array(state.logs.prefix(100))
     next.chat = []
     next.contextNote = ""
+    next.contextNoteRecordedAt = nil
     return next
 }
 

@@ -47,9 +47,119 @@ public struct InferenceRequestContext: Equatable, Sendable {
 public func shouldCommitInference(
     context: InferenceRequestContext,
     currentGeneration: Int,
-    currentRequestID: UUID?
+    currentRequestID: UUID?,
+    currentInputHash: String? = nil
 ) -> Bool {
-    currentRequestID == context.requestID && currentGeneration == context.generation
+    guard currentRequestID == context.requestID, currentGeneration == context.generation else {
+        return false
+    }
+    if let currentInputHash, currentInputHash != context.inputHash {
+        return false
+    }
+    return true
+}
+
+public func isCurrentInference(
+    _ inference: PersistedInference,
+    currentInputHash: String?,
+    analysisDay: Date,
+    timeZone: TimeZone,
+    snapshotEmpty: Bool,
+    moduleEnabled: Bool
+) -> Bool {
+    guard moduleEnabled, !snapshotEmpty else { return false }
+    if let currentInputHash, inference.inputHash != currentInputHash {
+        return false
+    }
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar.startOfDay(for: inference.generatedAt) == calendar.startOfDay(for: analysisDay)
+}
+
+public func displayedInference(
+    stored: PersistedInference?,
+    currentInputHash: String?,
+    analysisDay: Date,
+    timeZone: TimeZone,
+    snapshotEmpty: Bool,
+    moduleEnabled: Bool
+) -> PersistedInference? {
+    guard let stored else { return nil }
+    guard isCurrentInference(
+        stored,
+        currentInputHash: currentInputHash,
+        analysisDay: analysisDay,
+        timeZone: timeZone,
+        snapshotEmpty: snapshotEmpty,
+        moduleEnabled: moduleEnabled
+    ) else {
+        return nil
+    }
+    return stored
+}
+
+public func displayedInferences(
+    stored: [String: PersistedInference],
+    currentHashes: [String: String],
+    analysisDay: Date,
+    timeZone: TimeZone,
+    snapshotEmpty: Bool,
+    modules: [String: Bool]
+) -> [String: PersistedInference] {
+    var result: [String: PersistedInference] = [:]
+    for (task, inference) in stored {
+        if let shown = displayedInference(
+            stored: inference,
+            currentInputHash: currentHashes[task],
+            analysisDay: analysisDay,
+            timeZone: timeZone,
+            snapshotEmpty: snapshotEmpty,
+            moduleEnabled: modules[task] != false
+        ) {
+            result[task] = shown
+        }
+    }
+    return result
+}
+
+public struct PendingLiveWork: Equatable, Sendable {
+    public var task: String
+    public var inputHash: String
+    public var question: String
+    public var force: Bool
+
+    public init(task: String, inputHash: String, question: String = "", force: Bool = false) {
+        self.task = task
+        self.inputHash = inputHash
+        self.question = question
+        self.force = force
+    }
+}
+
+public func enqueuePendingLive(
+    _ existing: [String: PendingLiveWork],
+    task: String,
+    inputHash: String,
+    question: String = "",
+    force: Bool = false
+) -> [String: PendingLiveWork] {
+    var next = existing
+    next[task] = PendingLiveWork(task: task, inputHash: inputHash, question: question, force: force)
+    return next
+}
+
+public func takePendingLive(
+    _ existing: [String: PendingLiveWork],
+    task: String
+) -> (work: PendingLiveWork?, remaining: [String: PendingLiveWork]) {
+    var next = existing
+    let work = next.removeValue(forKey: task)
+    return (work, next)
+}
+
+/// Latest included sample/event time. Calendar-bucket ends are not observations.
+public func inferenceObservedAt(facts: [EvidenceFact]) -> Date? {
+    facts.compactMap(\.observedAt).max()
 }
 
 public func shouldClearBusy(finishing: UUID, currentRequestID: UUID?) -> Bool {
@@ -98,7 +208,8 @@ public func evidenceInputCanonicalString(
             fact.window.timeZone.identifier,
             fact.sourceRef,
             fact.synthetic ? "1" : "0",
-            fact.text ?? ""
+            fact.text ?? "",
+            fact.observedAt.map { stamp($0) } ?? ""
         ].joined(separator: "=")
     }.joined(separator: "\n")
     let temperature = profile.temperature.map { String(format: "%.4f", $0) } ?? ""
@@ -187,6 +298,7 @@ public func applyCachedInference(
     cacheHit: Bool,
     inputHash: String,
     window: TimeWindow,
+    observedAt: Date,
     task: String
 ) -> PersistedInference {
     PersistedInference(
@@ -196,7 +308,7 @@ public func applyCachedInference(
         model: model,
         mode: mode,
         generatedAt: originalGeneratedAt,
-        observedEnd: window.end,
+        observedEnd: observedAt,
         inputHash: inputHash,
         window: window,
         servedAt: servedAt,

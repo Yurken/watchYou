@@ -157,4 +157,164 @@ final class WatchSyncTests: XCTestCase {
         let pending = WatchOutboundEvent(id: "w1", kind: "water", amount: 250, createdAt: now, revision: 1)
         XCTAssertEqual(displayedWater(snapshot: watch, pending: [pending], now: now), 0)
     }
+
+    func testResetTombstonesBlockReplayAndKeepNewEvents() {
+        let old = HabitEvent(id: "w1", kind: "water", amount: 250, createdAt: Date(), revision: 1)
+        var state = AppPersistedState()
+        state.events = [old]
+        state.contextNote = "刚喝了咖啡"
+        state.contextNoteRecordedAt = Date()
+        state.inferences = ["mood": PersistedInference(
+            task: "mood",
+            result: AIResult(summary: "s", evidenceIds: ["H1"], uncertainties: ["u"], suggestions: [], emotion: nil),
+            facts: [],
+            model: "m",
+            mode: "live",
+            generatedAt: Date(),
+            observedEnd: Date(),
+            inputHash: "h",
+            window: TimeWindow(start: Date(), end: Date(), timeZone: tz)
+        )]
+        let cleared = resettingAppRecords(state)
+        XCTAssertTrue(cleared.events.isEmpty)
+        XCTAssertTrue(cleared.inferences.isEmpty)
+        XCTAssertEqual(cleared.contextNote, "")
+        XCTAssertNil(cleared.contextNoteRecordedAt)
+        XCTAssertEqual(cleared.eventTombstones["w1"], 1)
+        XCTAssertEqual(cleared.generation, state.generation + 1)
+
+        let replay = addingEvent(cleared.events, old, tombstones: cleared.eventTombstones)
+        XCTAssertTrue(replay.events.isEmpty)
+        XCTAssertEqual(replay.tombstones["w1"], 1)
+
+        let fresh = HabitEvent(id: "w2", kind: "water", amount: 150, createdAt: Date(), revision: 1)
+        let kept = addingEvent(replay.events, fresh, tombstones: replay.tombstones)
+        XCTAssertEqual(kept.events.map(\.id), ["w2"])
+
+        var persisted: [HabitEvent] = []
+        let ack = ingestWatchEvent(
+            events: cleared.events,
+            tombstones: cleared.eventTombstones,
+            event: WatchOutboundEvent(id: "w1", kind: "water", amount: 250, createdAt: Date(), revision: 1)
+        ) { events, _ in
+            persisted = events
+        }
+        XCTAssertEqual(ack?.eventID, "w1")
+        XCTAssertTrue(persisted.isEmpty)
+    }
+
+    func testImportedBackupDoesNotRollBackWatchSnapshotOrder() {
+        let now = date(2026, 10, 21, 13, 58)
+        var current = AppPersistedState()
+        current.watchSnapshotRevision = 120
+        current.generation = 8
+        var imported = AppPersistedState()
+        imported.watchSnapshotRevision = 30
+        imported.generation = 2
+        imported.events = [HabitEvent(id: "w1", kind: "water", amount: 250, createdAt: now)]
+        let next = applyingImportedBackup(current: current, imported: imported)
+        XCTAssertEqual(next.watchSnapshotRevision, 120)
+        XCTAssertEqual(next.generation, 9)
+        XCTAssertEqual(next.events.count, 1)
+
+        let watchCurrent = WatchSnapshot(
+            generatedAt: now.addingTimeInterval(-120),
+            observedAt: now,
+            todayTitle: "old",
+            todaySummary: "s",
+            moodLabel: "m",
+            moodNote: "n",
+            sleepText: "sleep",
+            sleepWindowText: "—",
+            recoveryText: "—",
+            waterMl: 1000,
+            waterGoal: 2000,
+            empty: false,
+            stale: false,
+            snapshotRevision: 120
+        )
+        let rolledBack = WatchSnapshot(
+            generatedAt: now,
+            observedAt: now,
+            todayTitle: "restored",
+            todaySummary: "s",
+            moodLabel: "m",
+            moodNote: "n",
+            sleepText: "sleep",
+            sleepWindowText: "—",
+            recoveryText: "—",
+            waterMl: 250,
+            waterGoal: 2000,
+            empty: false,
+            stale: false,
+            snapshotRevision: 31
+        )
+        XCTAssertFalse(shouldAcceptWatchSnapshot(current: watchCurrent, incoming: rolledBack))
+        let forwarded = WatchSnapshot(
+            generatedAt: now,
+            observedAt: now,
+            todayTitle: "new",
+            todaySummary: "s",
+            moodLabel: "m",
+            moodNote: "n",
+            sleepText: "sleep",
+            sleepWindowText: "—",
+            recoveryText: "—",
+            waterMl: 250,
+            waterGoal: 2000,
+            empty: false,
+            stale: false,
+            snapshotRevision: next.watchSnapshotRevision + 1
+        )
+        XCTAssertTrue(shouldAcceptWatchSnapshot(current: watchCurrent, incoming: forwarded))
+    }
+
+    func testYesterdaySnapshotPlusTodayPendingShowsTodayWater() {
+        let yesterday = date(2026, 10, 21, 23, 59)
+        let today = date(2026, 10, 22, 0, 1)
+        let snapshot = WatchSnapshot(
+            generatedAt: yesterday,
+            observedAt: yesterday,
+            todayTitle: "t",
+            todaySummary: "s",
+            moodLabel: "m",
+            moodNote: "n",
+            sleepText: "sleep",
+            sleepWindowText: "—",
+            recoveryText: "—",
+            waterMl: 1000,
+            waterGoal: 2000,
+            empty: false,
+            stale: false,
+            includedWaterIds: ["old"],
+            logicalDay: calendar.startOfDay(for: yesterday),
+            timeZoneIdentifier: tz.identifier,
+            snapshotRevision: 8
+        )
+        let pending = WatchOutboundEvent(id: "new", kind: "water", amount: 250, createdAt: today)
+        XCTAssertEqual(displayedWater(snapshot: snapshot, pending: [pending], now: today), 250)
+        XCTAssertEqual(
+            displayedWater(
+                snapshot: snapshot,
+                pending: [
+                    WatchOutboundEvent(id: "old", kind: "water", amount: 1000, createdAt: yesterday),
+                    pending
+                ],
+                now: today
+            ),
+            250
+        )
+    }
+
+    func testAckWithOnlyEventIDDoesNotDropHigherRevision() {
+        let ack = parseWatchAck(["ack": "e"])
+        XCTAssertEqual(ack?.eventID, "e")
+        XCTAssertEqual(ack?.revision, 1)
+        let first = WatchOutboundEvent(id: "e", kind: "water", amount: 250, createdAt: Date(), revision: 1)
+        let second = WatchOutboundEvent(id: "e", kind: "water", amount: 250, createdAt: Date(), revision: 2)
+        var queue = mergingOutbound(mergingOutbound([], first), second)
+        queue = acknowledgeOutbound(queue, ack: ack!)
+        XCTAssertEqual(queue.first?.revision, 2)
+        XCTAssertEqual(queue.count, 1)
+    }
 }

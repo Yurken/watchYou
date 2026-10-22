@@ -29,6 +29,7 @@ final class EmotionPipelineTests: XCTestCase {
             preferences: UserPreferences(),
             events: [],
             contextNote: contextNote,
+            contextRecordedAt: now,
             feedback: feedback,
             allowedScopes: [
                 "sleep": true,
@@ -227,6 +228,7 @@ final class EmotionPipelineTests: XCTestCase {
                 preferences: UserPreferences(),
                 events: events,
                 contextNote: note,
+                contextRecordedAt: date(2026, 10, 21, 9, 0),
                 allowedScopes: scopes,
                 now: callTime
             )

@@ -12,6 +12,7 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
     public let sourceRef: String
     public let synthetic: Bool
     public let text: String?
+    public let observedAt: Date?
 
     public init(
         id: String,
@@ -23,7 +24,8 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         window: TimeWindow,
         sourceRef: String,
         synthetic: Bool,
-        text: String? = nil
+        text: String? = nil,
+        observedAt: Date? = nil
     ) {
         self.id = id
         self.scope = scope
@@ -35,10 +37,11 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         self.sourceRef = sourceRef
         self.synthetic = synthetic
         self.text = text
+        self.observedAt = observedAt
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, scope, metric, value, unit, sampleCount, window, sourceRef, synthetic, text
+        case id, scope, metric, value, unit, sampleCount, window, sourceRef, synthetic, text, observedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -53,6 +56,7 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         sourceRef = try container.decode(String.self, forKey: .sourceRef)
         synthetic = try container.decode(Bool.self, forKey: .synthetic)
         text = try container.decodeIfPresent(String.self, forKey: .text)
+        observedAt = try container.decodeIfPresent(Date.self, forKey: .observedAt)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -67,6 +71,7 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         try container.encode(sourceRef, forKey: .sourceRef)
         try container.encode(synthetic, forKey: .synthetic)
         try container.encodeIfPresent(text, forKey: .text)
+        try container.encodeIfPresent(observedAt, forKey: .observedAt)
     }
 }
 

@@ -53,17 +53,14 @@ struct ContentView: View {
                             }
                         }
                     } else {
-                        Text("暂无可读摘要，不生成状态。空结果不代表权限被拒绝。")
+                        Text("暂无数据")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
-                    Button("查看 AI 情绪") { page = .mood }
+                    Button("查看情绪") { page = .mood }
                 } else {
                     Text("等待 iPhone 摘要")
                         .font(.system(size: 18, weight: .semibold))
-                    Text("手表显示手机生成的摘要，不单独调用模型。")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
                 }
                 footer
             }
@@ -84,15 +81,9 @@ struct ContentView: View {
                     Text(snapshot.stale ? "历史缓存 · \(snapshot.sleepWindowText)" : snapshot.sleepWindowText)
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    Text("来自 iPhone 健康摘要，手表不重新分期。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
                 } else {
-                    Text("暂无可读睡眠数据")
+                    Text("暂无睡眠")
                         .font(.system(size: 16, weight: .semibold))
-                    Text("在 iPhone 授权并同步睡眠记录后显示昨夜时长。")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
                 }
                 footer
             }
@@ -104,7 +95,7 @@ struct ContentView: View {
     private var moodPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("AI 情绪")
+                Text("情绪")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Circle()
@@ -119,14 +110,11 @@ struct ContentView: View {
                 Text(snapshot?.moodLabel ?? "等待分析")
                     .font(.system(size: 20, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                Text(snapshot?.moodNote ?? "证据有限 · 正负向未知")
+                Text(snapshot?.moodNote ?? "暂无法判断")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
-                Text("推断由 iPhone 完成。手表只显示最后一份摘要。")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
                 footer
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -150,7 +138,7 @@ struct ContentView: View {
                 ProgressView(value: min(1, Double(model.waterMl) / Double(max(model.waterGoal, 1))))
                 Button("+ 250 ml") { model.addWater(250) }
                 Button("+ 150 ml") { model.addWater(150) }
-                Text(model.pending.contains(where: { $0.kind == "water" }) ? "可离线记录，连接后合并" : "记录会同步到 iPhone")
+                Text(model.pending.contains(where: { $0.kind == "water" }) ? "待同步" : "记录会同步到 iPhone")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 footer
@@ -183,7 +171,7 @@ struct ContentView: View {
                 Button(model.breathing ? "停止练习 · \(max(0, 60 - model.elapsed))s" : "开始练习") {
                     model.breathing ? model.stopBreath(completed: false) : model.startBreath()
                 }
-                Text("不屏息，不适即停止。完成一分钟后写入离线队列。")
+                Text("不屏息，不适即停止。")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 footer
@@ -201,7 +189,7 @@ struct ContentView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             if !model.pending.isEmpty {
-                Text("有 \(model.pending.count) 条事件等待 iPhone 确认")
+                Text("待同步")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }

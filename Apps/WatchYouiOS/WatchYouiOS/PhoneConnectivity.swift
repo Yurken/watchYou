@@ -4,7 +4,7 @@ import WatchYouCore
 
 @MainActor
 final class PhoneConnectivity: NSObject, ObservableObject {
-    @Published var note = "尚未激活手表会话"
+    @Published var note = "正在连接手表"
     @Published var reachable = false
 
     var onEvent: ((WatchOutboundEvent) -> WatchAck?)?
@@ -12,7 +12,7 @@ final class PhoneConnectivity: NSObject, ObservableObject {
 
     func activate() {
         guard WCSession.isSupported() else {
-            note = "此设备不支持 WatchConnectivity"
+            note = "无法连接手表"
             onNoteChange?(note)
             return
         }
@@ -47,7 +47,13 @@ final class PhoneConnectivity: NSObject, ObservableObject {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         reachable = session.isReachable
-        note = "手表 \(session.activationState == .activated ? "已连接通道" : "未激活") · 配对 \(session.isPaired ? "是" : "否") · App \(session.isWatchAppInstalled ? "已安装" : "未安装")"
+        if session.activationState != .activated {
+            note = "正在连接手表"
+        } else if session.isWatchAppInstalled {
+            note = session.isReachable ? "手表已连接" : "手表未在近旁"
+        } else {
+            note = "请在手表安装 watch you"
+        }
         onNoteChange?(note)
     }
 

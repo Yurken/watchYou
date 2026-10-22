@@ -29,9 +29,6 @@ struct TodayView: View {
                 }
                 .buttonStyle(SecondaryChip())
             }
-            Text("AI 推断不是本人自述或医学事实。每条结果都能查看依据与数据时间。")
-                .font(.system(size: 11))
-                .foregroundStyle(WY.muted)
         }
         .sheet(item: Binding(
             get: { evidenceTask.map { Tag($0) } },
@@ -140,10 +137,10 @@ struct TodayView: View {
                     Spacer()
                     WYPill(text: "自动推断", kind: .green)
                 }
-                Text(model.inference("mood")?.result.emotion?.label ?? "等待分析")
+                Text(model.inference("mood")?.result.emotion?.label ?? "暂无法判断")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(WY.ink)
-                Text(model.inference("mood")?.result.summary ?? "无需打卡。结合生理摘要估计倾向，证据不足时保留未知。")
+                Text(model.inference("mood")?.result.summary ?? "等待分析")
                     .font(.system(size: 12))
                     .foregroundStyle(WY.muted)
                     .lineSpacing(4)
@@ -171,11 +168,11 @@ struct TodayView: View {
                 model.morePath = ["recovery"]
             } label: {
                 WYCard {
-                    Text("恢复参考 · 本地计算")
+                    Text("恢复参考")
                         .font(.system(size: 11))
                         .foregroundStyle(WY.muted)
                     WYMetric(value: model.snapshot.recoveryScore.map { "\($0.value)" } ?? "—", unit: "/ 100", size: 26)
-                    Text(model.snapshot.recoveryScore == nil ? "基线不足则弃权" : "实验性指标")
+                    Text(model.snapshot.recoveryScore == nil ? "正在建立基线" : "查看依据 →")
                         .font(.system(size: 11))
                         .foregroundStyle(WY.muted)
                 }

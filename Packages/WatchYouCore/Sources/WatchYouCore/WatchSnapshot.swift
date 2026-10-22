@@ -185,8 +185,8 @@ public func makeWatchSnapshot(
         return today?.result.summary.isEmpty == false ? "今日洞察" : "等待分析"
     }()
     let summary = empty
-        ? "暂无可读摘要，不生成状态。"
-        : (today?.result.summary ?? "在手机完成设置后显示分析摘要。")
+        ? "暂无数据"
+        : (today?.result.summary ?? "等待分析")
     let waterEvents = events.filter { event in
         event.kind == "water"
     }
@@ -236,13 +236,18 @@ public func displayedWater(snapshot: WatchSnapshot?, pending: [WatchOutboundEven
     let timeZone = TimeZone(identifier: snapshot?.timeZoneIdentifier ?? "") ?? .current
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = timeZone
-    let day = snapshot?.logicalDay ?? calendar.startOfDay(for: snapshot?.generatedAt ?? now)
-    let included = Set(snapshot?.includedWaterIds ?? [])
-    let extra = pending
+    let today = calendar.startOfDay(for: now)
+    let snapshotDay = snapshot?.logicalDay ?? calendar.startOfDay(for: snapshot?.generatedAt ?? now)
+    let todayPending = pending
         .filter { event in
-            guard event.kind == "water", !included.contains(event.id) else { return false }
-            return calendar.startOfDay(for: event.createdAt) == calendar.startOfDay(for: day)
+            event.kind == "water" && calendar.startOfDay(for: event.createdAt) == today
         }
+    if snapshot == nil || snapshotDay != today {
+        return todayPending.reduce(0) { $0 + Int($1.amount.rounded()) }
+    }
+    let included = Set(snapshot?.includedWaterIds ?? [])
+    let extra = todayPending
+        .filter { !included.contains($0.id) }
         .reduce(0) { $0 + Int($1.amount.rounded()) }
     return (snapshot?.waterMl ?? 0) + extra
 }

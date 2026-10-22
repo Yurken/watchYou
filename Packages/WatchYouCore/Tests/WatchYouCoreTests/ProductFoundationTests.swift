@@ -108,7 +108,7 @@ final class ProductFoundationTests: XCTestCase {
         let config = defaultAIConfig()
         XCTAssertEqual(
             qualityGate(task: "mood", snapshot: snapshot, config: config, facts: [], hasContext: false, now: Date()),
-            "暂无可读数据，暂不推断"
+            "暂无数据"
         )
         snapshot.isEmpty = false
         snapshot.duringWorkout = true
@@ -147,11 +147,15 @@ final class ProductFoundationTests: XCTestCase {
             grantedAt: Date()
         )
         state.events = [HabitEvent(id: "w1", kind: "water", amount: 250, createdAt: Date())]
+        state.contextNote = "刚喝了咖啡"
+        state.contextNoteRecordedAt = Date()
         let data = try exportBackup(state: state, now: Date())
         let restored = try importBackup(data)
         XCTAssertEqual(restored.aiConfig.mode, "demo")
         XCTAssertNil(restored.consent)
         XCTAssertEqual(restored.events.count, 1)
+        XCTAssertEqual(restored.contextNote, "")
+        XCTAssertNil(restored.contextNoteRecordedAt)
     }
 
     func testBackupRejectsOversizedAndSecrets() {

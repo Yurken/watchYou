@@ -412,8 +412,10 @@ public struct HealthSnapshot: Equatable, Sendable {
     public var recentHRV: Double?
     public var recentHRVAt: Date?
     public var todaySteps: Double?
+    public var todayStepsObservedAt: Date?
     public var todayEnergyKcal: Double?
     public var todayExerciseMinutes: Double?
+    public var rhrValidDays: Int
     public var weekExercise: [DailyQuantity]
     public var sleepTrend: [SleepNight]
     public var workouts: [WorkoutRecord]
@@ -445,8 +447,10 @@ public struct HealthSnapshot: Equatable, Sendable {
         recentHRV: Double? = nil,
         recentHRVAt: Date? = nil,
         todaySteps: Double? = nil,
+        todayStepsObservedAt: Date? = nil,
         todayEnergyKcal: Double? = nil,
         todayExerciseMinutes: Double? = nil,
+        rhrValidDays: Int = 0,
         weekExercise: [DailyQuantity] = [],
         sleepTrend: [SleepNight] = [],
         workouts: [WorkoutRecord] = [],
@@ -477,8 +481,10 @@ public struct HealthSnapshot: Equatable, Sendable {
         self.recentHRV = recentHRV
         self.recentHRVAt = recentHRVAt
         self.todaySteps = todaySteps
+        self.todayStepsObservedAt = todayStepsObservedAt
         self.todayEnergyKcal = todayEnergyKcal
         self.todayExerciseMinutes = todayExerciseMinutes
+        self.rhrValidDays = rhrValidDays
         self.weekExercise = weekExercise
         self.sleepTrend = sleepTrend
         self.workouts = workouts
@@ -506,6 +512,7 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
     public var logs: [AuditRecord]
     public var chat: [ChatTurn]
     public var contextNote: String
+    public var contextNoteRecordedAt: Date?
     public var generation: Int
     public var eventTombstones: [String: Int]
     public var watchSnapshotRevision: Int
@@ -522,6 +529,7 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         logs: [AuditRecord] = [],
         chat: [ChatTurn] = [],
         contextNote: String = "",
+        contextNoteRecordedAt: Date? = nil,
         generation: Int = 0,
         eventTombstones: [String: Int] = [:],
         watchSnapshotRevision: Int = 0
@@ -537,13 +545,14 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         self.logs = logs
         self.chat = chat
         self.contextNote = contextNote
+        self.contextNoteRecordedAt = contextNoteRecordedAt
         self.generation = generation
         self.eventTombstones = eventTombstones
         self.watchSnapshotRevision = watchSnapshotRevision
     }
 
     enum CodingKeys: String, CodingKey {
-        case preferences, events, feedback, rpeByWorkout, aiConfig, consent, usage, inferences, logs, chat, contextNote, generation
+        case preferences, events, feedback, rpeByWorkout, aiConfig, consent, usage, inferences, logs, chat, contextNote, contextNoteRecordedAt, generation
         case eventTombstones, watchSnapshotRevision
     }
 
@@ -560,6 +569,7 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         logs = try container.decode([AuditRecord].self, forKey: .logs)
         chat = try container.decode([ChatTurn].self, forKey: .chat)
         contextNote = try container.decode(String.self, forKey: .contextNote)
+        contextNoteRecordedAt = try container.decodeIfPresent(Date.self, forKey: .contextNoteRecordedAt)
         generation = try container.decode(Int.self, forKey: .generation)
         eventTombstones = try container.decodeIfPresent([String: Int].self, forKey: .eventTombstones) ?? [:]
         watchSnapshotRevision = try container.decodeIfPresent(Int.self, forKey: .watchSnapshotRevision) ?? 0
@@ -578,6 +588,7 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         try container.encode(logs, forKey: .logs)
         try container.encode(chat, forKey: .chat)
         try container.encode(contextNote, forKey: .contextNote)
+        try container.encodeIfPresent(contextNoteRecordedAt, forKey: .contextNoteRecordedAt)
         try container.encode(generation, forKey: .generation)
         try container.encode(eventTombstones, forKey: .eventTombstones)
         try container.encode(watchSnapshotRevision, forKey: .watchSnapshotRevision)

@@ -57,11 +57,12 @@ public func recoveryScore(
     baselineRHR: Double = 58,
     logHRVScale: Double = 0.18,
     rhrScale: Double = 3,
-    validDays: Int = 28
+    validDays: Int = 28,
+    rhrValidDays: Int = 28
 ) -> RecoveryScore? {
     let inputs = [hrv, restingHeartRate, sleepScoreValue, baselineHRV, baselineRHR, logHRVScale, rhrScale]
     guard inputs.allSatisfy(\.isFinite), hrv > 0, baselineHRV > 0,
-          logHRVScale > 0, rhrScale > 0, validDays >= 14
+          logHRVScale > 0, rhrScale > 0, validDays >= 14, rhrValidDays >= 14
     else { return nil }
     func clip(_ x: Double) -> Double { min(3, max(-3, x)) }
     let zH = clip((log(hrv) - log(baselineHRV)) / logHRVScale)

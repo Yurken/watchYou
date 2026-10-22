@@ -42,6 +42,45 @@ public func addingEvent(
     return (events + [event], nextTombs)
 }
 
+public func resettingEvents(
+    events: [HabitEvent],
+    tombstones: [String: Int]
+) -> (events: [HabitEvent], tombstones: [String: Int]) {
+    var nextTombs = tombstones
+    for event in events {
+        nextTombs[event.id] = max(nextTombs[event.id] ?? 0, event.revision)
+    }
+    return ([], nextTombs)
+}
+
+public func resettingAppRecords(_ state: AppPersistedState) -> AppPersistedState {
+    let cleared = resettingEvents(events: state.events, tombstones: state.eventTombstones)
+    var next = state
+    next.events = cleared.events
+    next.eventTombstones = cleared.tombstones
+    next.feedback = []
+    next.inferences = [:]
+    next.chat = []
+    next.contextNote = ""
+    next.contextNoteRecordedAt = nil
+    next.generation += 1
+    return next
+}
+
+public func adoptedWatchSnapshotRevision(current: Int, imported: Int) -> Int {
+    max(current, imported)
+}
+
+public func applyingImportedBackup(current: AppPersistedState, imported: AppPersistedState) -> AppPersistedState {
+    var next = imported
+    next.watchSnapshotRevision = adoptedWatchSnapshotRevision(
+        current: current.watchSnapshotRevision,
+        imported: imported.watchSnapshotRevision
+    )
+    next.generation = current.generation + 1
+    return next
+}
+
 public func deletingEvent(
     _ events: [HabitEvent],
     id: String,
@@ -104,5 +143,5 @@ public func parseWatchAck(_ payload: [String: Any]) -> WatchAck? {
     if let revision = payload["ackRevision"] as? Int {
         return WatchAck(eventID: id, revision: revision)
     }
-    return WatchAck(eventID: id, revision: Int.max)
+    return WatchAck(eventID: id, revision: 1)
 }

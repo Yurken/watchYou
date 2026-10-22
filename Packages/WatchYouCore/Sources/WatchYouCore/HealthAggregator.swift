@@ -67,16 +67,20 @@ public func aggregateHealth(
     )[today]
     let rhrBaseline = median(Array(rhrByDay.values))
     let rhr = rhrToday
+    let rhrValidDays = rhrByDay.count
 
     let recovery = {
-        guard let hrv = lastHRV, let rhrValue = rhr, let sleepValue = sleep else { return nil as RecoveryScore? }
+        guard let hrv = lastHRV, let rhrValue = rhr, let sleepValue = sleep, let baselineRHR = rhrBaseline else {
+            return nil as RecoveryScore?
+        }
         return recoveryScore(
             hrv: hrv,
             restingHeartRate: rhrValue,
             sleepScoreValue: Double(sleepValue.value),
             baselineHRV: hrvBaseline ?? hrv,
-            baselineRHR: rhrBaseline ?? rhrValue,
-            validDays: hrvHistory.count
+            baselineRHR: baselineRHR,
+            validDays: hrvHistory.count,
+            rhrValidDays: rhrValidDays
         )
     }()
 
@@ -130,8 +134,10 @@ public func aggregateHealth(
         recentHRV: recentHRVSample?.value,
         recentHRVAt: recentHRVSample?.window.end,
         todaySteps: todayValue(Metric.stepCount),
+        todayStepsObservedAt: observedDailyRows(catalog.daily).first { $0.metric == Metric.stepCount && $0.day == today }?.lastSampleAt,
         todayEnergyKcal: todayValue(Metric.activeEnergy),
         todayExerciseMinutes: todayValue(Metric.exerciseMinutes),
+        rhrValidDays: rhrValidDays,
         weekExercise: weekExercise,
         sleepTrend: sleepTrend,
         workouts: workouts,

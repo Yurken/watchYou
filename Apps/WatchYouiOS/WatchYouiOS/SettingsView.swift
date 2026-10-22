@@ -44,7 +44,7 @@ struct SettingsView: View {
                 TitleRow(title: "签名与安装", systemImage: "clock", pill: "每周维护")
                 Text("到期时间需人工确认")
                     .font(.system(size: 16, weight: .medium))
-                Text("不假装自动读到证书。免费个人团队描述文件通常约 7 天。覆盖安装，不要先卸载。")
+                Text("免费个人团队证书通常约 7 天。覆盖安装，不要先卸载。")
                     .font(.system(size: 12))
                     .foregroundStyle(WY.muted)
                 if !model.connectivityNote.isEmpty {
@@ -88,7 +88,7 @@ struct SettingsView: View {
     private var about: some View {
         WYCard {
             TitleRow(title: "关于 watch you", systemImage: "info.circle")
-            Text("watch you 把睡眠、心率与恢复汇总为可解释的洞察。本地分数是实验性启发式。AI 输出不是诊断，也不会在未确认时改写你的目标或健康库。")
+            Text("把睡眠、心率与恢复汇总成可查看的洞察。分析供日常参考，不会改写健康库。")
                 .font(.system(size: 12))
                 .foregroundStyle(WY.muted)
                 .lineSpacing(4)

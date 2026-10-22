@@ -24,6 +24,8 @@ final class ScoreTests: XCTestCase {
     func testRecoveryAbstainsWithoutFourteenDays() {
         XCTAssertNil(recoveryScore(hrv: 54, restingHeartRate: 56, sleepScoreValue: 92, validDays: 7))
         XCTAssertNil(recoveryScore(hrv: .nan, restingHeartRate: 56, sleepScoreValue: 92))
+        XCTAssertNil(recoveryScore(hrv: 54, restingHeartRate: 56, sleepScoreValue: 92, rhrValidDays: 0))
+        XCTAssertNil(recoveryScore(hrv: 54, restingHeartRate: 56, sleepScoreValue: 92, rhrValidDays: 13))
     }
 
     func testTrainingLoadNeedsRPE() {

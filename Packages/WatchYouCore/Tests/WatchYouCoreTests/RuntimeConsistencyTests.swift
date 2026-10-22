@@ -165,6 +165,7 @@ final class RuntimeConsistencyTests: XCTestCase {
             cacheHit: true,
             inputHash: "h",
             window: TimeWindow(start: original, end: original, timeZone: tz),
+            observedAt: original,
             task: "today"
         )
         XCTAssertEqual(persisted.generatedAt, original)

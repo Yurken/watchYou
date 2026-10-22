@@ -145,7 +145,7 @@ struct WYEmptyState: View {
                 Text("暂无可读健康数据")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(WY.ink)
-                Text("可能尚未授权、还未产生数据或尚未同步。不能据此判断权限被拒绝。")
+                Text("授权健康数据后即可查看。")
                     .font(.system(size: 12))
                     .foregroundStyle(WY.muted)
                     .multilineTextAlignment(.center)
@@ -288,7 +288,7 @@ struct EvidenceSheet: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("\(fact.metric)：\(fact.value.map { $0.formatted() } ?? "—") \(fact.unit)")
                                         .font(.system(size: 13, weight: .medium))
-                                    Text("\(WYFormat.dateTime(fact.window.end, timeZone: fact.window.timeZone)) · \(fact.sourceRef)")
+                                    Text("\(WYFormat.dateTime(fact.observedAt ?? fact.window.end, timeZone: fact.window.timeZone)) · \(fact.sourceRef)")
                                         .font(.system(size: 11))
                                         .foregroundStyle(WY.muted)
                                 }
@@ -303,7 +303,7 @@ struct EvidenceSheet: View {
                             .font(.system(size: 13))
                             .foregroundStyle(WY.muted)
                     }
-                    Text("\(inference.model) · \(WYFormat.dateTime(inference.generatedAt))\n结构校验通过不代表内容已获得医学验证。")
+                    Text("\(inference.model) · \(WYFormat.dateTime(inference.generatedAt))")
                         .font(.system(size: 11))
                         .foregroundStyle(WY.muted)
                 }

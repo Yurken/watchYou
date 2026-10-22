@@ -44,7 +44,7 @@ struct SleepView: View {
                 HStack(spacing: 10) {
                     Button { showScore = true } label: {
                         WYCard {
-                            Text("睡眠参考分 · 实验性")
+                            Text("睡眠参考分")
                                 .font(.system(size: 11))
                                 .foregroundStyle(WY.muted)
                             WYMetric(value: model.snapshot.sleepScore.map { "\($0.value)" } ?? "—", unit: "/ 100", size: 26)
@@ -69,9 +69,6 @@ struct SleepView: View {
                     stageRow("核心睡眠", night.stageMinutes["core"] ?? 0, night.asleepMinutes, WY.core)
                     stageRow("快速眼动", night.stageMinutes["rem"] ?? 0, night.asleepMinutes, WY.rem)
                     stageRow("深度睡眠", night.stageMinutes["deep"] ?? 0, night.asleepMinutes, WY.deep)
-                    Text("阶段比例只展示，不奖励深睡越多越好。系统未提供分期时只显示总时长。")
-                        .font(.system(size: 11))
-                        .foregroundStyle(WY.muted)
                 }
                 if !night.naps.isEmpty {
                     WYCard {
@@ -135,10 +132,10 @@ struct MoodView: View {
                     .frame(width: 78, height: 78)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 8)
-                Text(emotion?.label ?? "等待 AI 分析")
+                Text(emotion?.label ?? "暂无法判断")
                     .font(.system(size: 22, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                Text(inference?.result.summary ?? "先完成健康授权与可选的模型设置。不需要打卡。")
+                Text(inference?.result.summary ?? "等待分析")
                     .font(.system(size: 13))
                     .foregroundStyle(Color(hex: 0xCBDEE3))
                     .multilineTextAlignment(.center)
@@ -167,20 +164,16 @@ struct MoodView: View {
                 if let error = model.aiError {
                     WYNotice(text: error, warn: true)
                 }
-                Text("\(inference?.model ?? "未分析") · 不展示未经校准的准确率")
-                    .font(.system(size: 11))
-                    .foregroundStyle(WY.muted)
             }
             WYCard {
-                TitleRow(title: "让分析更贴近你", systemImage: "leaf")
-                Text("不需要打卡。你可以自愿补充背景，或记下与推断不同的感受。反馈与推断分开保存。")
+                TitleRow(title: "补充背景", systemImage: "leaf")
+                Text("可以补充当时在做什么，或记下不同的感受。")
                     .font(.system(size: 12))
                     .foregroundStyle(WY.muted)
                 Button("补充背景 / 纠正判断") { showContext = true }
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(WY.blue)
             }
-            WYNotice(text: "HRV 与心率不能单独证明焦虑、悲伤或愉悦。推断不会自动写成健康 App 中的本人心境。")
         }
         .sheet(isPresented: $showEvidence) {
             if let inference {
@@ -271,7 +264,7 @@ struct AssistantView: View {
                 .font(.system(size: 12, weight: .semibold))
                 Text("把数据，变成能理解的回答。")
                     .font(.system(size: 22, weight: .semibold))
-                Text("围绕睡眠、恢复、情绪与习惯作解释。每次回答保留证据，不代替诊疗。")
+                Text("围绕睡眠、恢复、情绪与习惯作解释。")
                     .font(.system(size: 13))
                     .foregroundStyle(Color(hex: 0xCBDEE3))
             }
@@ -282,7 +275,7 @@ struct AssistantView: View {
                     chip("习惯建议", "帮我制定一个容易坚持的小目标。")
                 }
                 if model.state.chat.isEmpty {
-                    Text("直接提问。发送时只附当前问题与已授权摘要。")
+                    Text("直接提问。")
                         .font(.system(size: 12))
                         .foregroundStyle(WY.muted)
                         .padding(.vertical, 8)
@@ -349,7 +342,7 @@ struct AIModuleCard: View {
             Text(model.aiBusy == task ? "正在分析…" : (inference?.result.summary ?? "为这组数据生成一份解释"))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(WY.ink)
-            Text(inference?.result.suggestions.first ?? "只使用你授权的摘要，结果保留数据时间与依据。")
+            Text(inference?.result.suggestions.first ?? "为这组数据生成一份解释")
                 .font(.system(size: 12))
                 .foregroundStyle(WY.muted)
             HStack {
@@ -362,9 +355,6 @@ struct AIModuleCard: View {
                     .buttonStyle(SecondaryChip())
                     .disabled(inference == nil)
             }
-            Text("\(inference?.model ?? (model.config.mode == "live" ? model.config.activeProfile.model : "本地规则摘要")) · 非诊断")
-                .font(.system(size: 11))
-                .foregroundStyle(WY.muted)
         }
         .sheet(isPresented: $showEvidence) {
             if let inference {
