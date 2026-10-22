@@ -104,11 +104,6 @@ public struct HabitEvent: Equatable, Sendable, Codable, Identifiable {
     }
 }
 
-public func addingEvent(_ events: [HabitEvent], _ event: HabitEvent) -> [HabitEvent] {
-    if events.contains(where: { $0.id == event.id }) { return events }
-    return events + [event]
-}
-
 public struct UserFeedback: Equatable, Sendable, Codable, Identifiable {
     public let id: String
     public let inferenceTask: String?
@@ -199,6 +194,8 @@ public struct PersistedInference: Equatable, Sendable, Codable {
     public var observedEnd: Date
     public var inputHash: String
     public var window: TimeWindow
+    public var servedAt: Date?
+    public var cacheHit: Bool?
 
     public init(
         task: String,
@@ -209,7 +206,9 @@ public struct PersistedInference: Equatable, Sendable, Codable {
         generatedAt: Date,
         observedEnd: Date,
         inputHash: String,
-        window: TimeWindow
+        window: TimeWindow,
+        servedAt: Date? = nil,
+        cacheHit: Bool? = nil
     ) {
         self.task = task
         self.result = result
@@ -220,6 +219,8 @@ public struct PersistedInference: Equatable, Sendable, Codable {
         self.observedEnd = observedEnd
         self.inputHash = inputHash
         self.window = window
+        self.servedAt = servedAt
+        self.cacheHit = cacheHit
     }
 }
 
@@ -368,6 +369,7 @@ public struct HealthCatalog: Equatable, Sendable {
     public var revisions: [SourceRevision]
     public var lastSuccessfulRead: Date?
     public var readError: String?
+    public var metricStates: [String: MetricQueryState]
 
     public init(
         samples: [HealthSampleRef] = [],
@@ -375,7 +377,8 @@ public struct HealthCatalog: Equatable, Sendable {
         workouts: [WorkoutRecord] = [],
         revisions: [SourceRevision] = [],
         lastSuccessfulRead: Date? = nil,
-        readError: String? = nil
+        readError: String? = nil,
+        metricStates: [String: MetricQueryState] = [:]
     ) {
         self.samples = samples
         self.daily = daily
@@ -383,6 +386,7 @@ public struct HealthCatalog: Equatable, Sendable {
         self.revisions = revisions
         self.lastSuccessfulRead = lastSuccessfulRead
         self.readError = readError
+        self.metricStates = metricStates
     }
 
     public var isEmpty: Bool {
@@ -420,6 +424,8 @@ public struct HealthSnapshot: Equatable, Sendable {
     public var isEmpty: Bool
     public var duringWorkout: Bool
     public var baselineNights: Int
+    public var metricStates: [String: MetricQueryState]
+    public var analysisDay: Date?
 
     public init(
         generatedAt: Date,
@@ -450,7 +456,9 @@ public struct HealthSnapshot: Equatable, Sendable {
         readError: String? = nil,
         isEmpty: Bool = true,
         duringWorkout: Bool = false,
-        baselineNights: Int = 0
+        baselineNights: Int = 0,
+        metricStates: [String: MetricQueryState] = [:],
+        analysisDay: Date? = nil
     ) {
         self.generatedAt = generatedAt
         self.timeZone = timeZone
@@ -481,6 +489,8 @@ public struct HealthSnapshot: Equatable, Sendable {
         self.isEmpty = isEmpty
         self.duringWorkout = duringWorkout
         self.baselineNights = baselineNights
+        self.metricStates = metricStates
+        self.analysisDay = analysisDay
     }
 }
 
@@ -497,6 +507,8 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
     public var chat: [ChatTurn]
     public var contextNote: String
     public var generation: Int
+    public var eventTombstones: [String: Int]
+    public var watchSnapshotRevision: Int
 
     public init(
         preferences: UserPreferences = UserPreferences(),
@@ -510,7 +522,9 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         logs: [AuditRecord] = [],
         chat: [ChatTurn] = [],
         contextNote: String = "",
-        generation: Int = 0
+        generation: Int = 0,
+        eventTombstones: [String: Int] = [:],
+        watchSnapshotRevision: Int = 0
     ) {
         self.preferences = preferences
         self.events = events
@@ -524,6 +538,49 @@ public struct AppPersistedState: Equatable, Sendable, Codable {
         self.chat = chat
         self.contextNote = contextNote
         self.generation = generation
+        self.eventTombstones = eventTombstones
+        self.watchSnapshotRevision = watchSnapshotRevision
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case preferences, events, feedback, rpeByWorkout, aiConfig, consent, usage, inferences, logs, chat, contextNote, generation
+        case eventTombstones, watchSnapshotRevision
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        preferences = try container.decode(UserPreferences.self, forKey: .preferences)
+        events = try container.decode([HabitEvent].self, forKey: .events)
+        feedback = try container.decode([UserFeedback].self, forKey: .feedback)
+        rpeByWorkout = try container.decode([String: Int].self, forKey: .rpeByWorkout)
+        aiConfig = try container.decode(AIConfig.self, forKey: .aiConfig)
+        consent = try container.decodeIfPresent(AIPermission.self, forKey: .consent)
+        usage = try container.decode(UsageCounter.self, forKey: .usage)
+        inferences = try container.decode([String: PersistedInference].self, forKey: .inferences)
+        logs = try container.decode([AuditRecord].self, forKey: .logs)
+        chat = try container.decode([ChatTurn].self, forKey: .chat)
+        contextNote = try container.decode(String.self, forKey: .contextNote)
+        generation = try container.decode(Int.self, forKey: .generation)
+        eventTombstones = try container.decodeIfPresent([String: Int].self, forKey: .eventTombstones) ?? [:]
+        watchSnapshotRevision = try container.decodeIfPresent(Int.self, forKey: .watchSnapshotRevision) ?? 0
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(preferences, forKey: .preferences)
+        try container.encode(events, forKey: .events)
+        try container.encode(feedback, forKey: .feedback)
+        try container.encode(rpeByWorkout, forKey: .rpeByWorkout)
+        try container.encode(aiConfig, forKey: .aiConfig)
+        try container.encodeIfPresent(consent, forKey: .consent)
+        try container.encode(usage, forKey: .usage)
+        try container.encode(inferences, forKey: .inferences)
+        try container.encode(logs, forKey: .logs)
+        try container.encode(chat, forKey: .chat)
+        try container.encode(contextNote, forKey: .contextNote)
+        try container.encode(generation, forKey: .generation)
+        try container.encode(eventTombstones, forKey: .eventTombstones)
+        try container.encode(watchSnapshotRevision, forKey: .watchSnapshotRevision)
     }
 }
 

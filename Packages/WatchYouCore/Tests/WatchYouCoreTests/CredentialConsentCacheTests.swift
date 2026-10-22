@@ -185,7 +185,7 @@ final class CredentialConsentCacheTests: XCTestCase {
     }
 
     func testConcurrentPutGetSafety() async {
-        let cache = InferenceCache()
+        let cache = InferenceCache(capacity: 128)
         let record = sampleRecord()
         let keys = (0..<100).map { sampleKey(inputHash: "\($0)") }
         await withTaskGroup(of: Void.self) { group in

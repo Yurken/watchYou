@@ -49,39 +49,70 @@ public struct InferenceRecord: Equatable, Sendable {
     public let result: AIResult
     public let evidenceIDs: Set<String>
     public let generation: Int
+    public let originalGeneratedAt: Date
     public let cachedAt: Date
 
     public init(
         result: AIResult,
         evidenceIDs: Set<String>,
         generation: Int,
-        cachedAt: Date = Date()
+        originalGeneratedAt: Date = Date(),
+        cachedAt: Date? = nil
     ) {
         self.result = result
         self.evidenceIDs = evidenceIDs
         self.generation = generation
-        self.cachedAt = cachedAt
+        self.originalGeneratedAt = originalGeneratedAt
+        self.cachedAt = cachedAt ?? originalGeneratedAt
     }
 }
 
 /// Thread-safe inference cache. A generation bump invalidates older entries implicitly via the key.
 public actor InferenceCache {
     private var storage: [InferenceCacheKey: InferenceRecord] = [:]
+    private let ttl: TimeInterval
+    private let capacity: Int
 
-    public init() {}
-
-    public func put(_ record: InferenceRecord, for key: InferenceCacheKey) {
-        storage[key] = record
+    public init(ttl: TimeInterval = 12 * 3600, capacity: Int = 48) {
+        self.ttl = ttl
+        self.capacity = max(1, capacity)
     }
 
-    public func get(_ key: InferenceCacheKey) -> InferenceRecord? {
-        storage[key]
+    public func put(_ record: InferenceRecord, for key: InferenceCacheKey, now: Date = Date()) {
+        evictExpired(now: now)
+        storage[key] = record
+        if storage.count > capacity {
+            let overflow = storage.count - capacity
+            let oldest = storage.sorted { $0.value.originalGeneratedAt < $1.value.originalGeneratedAt }.prefix(overflow)
+            for item in oldest {
+                storage.removeValue(forKey: item.key)
+            }
+        }
+    }
+
+    public func get(_ key: InferenceCacheKey, now: Date = Date()) -> InferenceRecord? {
+        guard let record = storage[key] else { return nil }
+        if now.timeIntervalSince(record.originalGeneratedAt) > ttl {
+            storage.removeValue(forKey: key)
+            return nil
+        }
+        return record
     }
 
     /// Remove entries that depend on any of the supplied evidence IDs.
     public func invalidate(evidenceIDs: Set<String>) {
         storage = storage.filter { _, record in
             record.evidenceIDs.isDisjoint(with: evidenceIDs)
+        }
+    }
+
+    public func removeAll() {
+        storage.removeAll()
+    }
+
+    private func evictExpired(now: Date) {
+        storage = storage.filter { _, record in
+            now.timeIntervalSince(record.originalGeneratedAt) <= ttl
         }
     }
 }

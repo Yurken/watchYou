@@ -50,27 +50,57 @@ final class HealthKitRepository: @unchecked Sendable {
         do {
             let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
             let sleep = try await samples(type: sleepType, start: start90, end: end)
+            var count = 0
             for sample in sleep.compactMap({ $0 as? HKCategorySample }) {
                 guard let stage = Self.stage(from: sample) else { continue }
                 let ref = Self.sampleRef(sample, metric: stage.metric, value: sample.endDate.timeIntervalSince(sample.startDate) / 60, unit: "min", timeZone: timeZone)
                 catalog.samples.append(ref)
                 revisions.append(Self.revision(sample))
+                count += 1
             }
+            catalog.metricStates[metricGroupSleep] = MetricQueryState(
+                metric: metricGroupSleep,
+                status: count == 0 ? .empty : .ok,
+                lastSuccessAt: count == 0 ? nil : now,
+                lastAttemptAt: now
+            )
         } catch {
             errors.append("睡眠")
+            catalog.metricStates[metricGroupSleep] = MetricQueryState(
+                metric: metricGroupSleep,
+                status: .failed,
+                lastAttemptAt: now,
+                error: "睡眠"
+            )
         }
 
         do {
             let type = HKObjectType.quantityType(forIdentifier: .heartRate)!
-            let rows = try await samples(type: type, start: start2, end: end, limit: 400)
-            for sample in rows.compactMap({ $0 as? HKQuantitySample }) {
-                catalog.samples.append(
-                    Self.sampleRef(sample, metric: Metric.heartRate, value: sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())), unit: "bpm", timeZone: timeZone)
-                )
-                revisions.append(Self.revision(sample))
+            let latest = try await samples(type: type, start: start2, end: end, limit: 1, ascending: false)
+            let series = try await samples(type: type, start: start2, end: end, limit: 400, ascending: false)
+            var seen = Set<UUID>()
+            for sample in (latest + series).compactMap({ $0 as? HKQuantitySample }) {
+                if seen.insert(sample.uuid).inserted {
+                    catalog.samples.append(
+                        Self.sampleRef(sample, metric: Metric.heartRate, value: sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())), unit: "bpm", timeZone: timeZone)
+                    )
+                    revisions.append(Self.revision(sample))
+                }
             }
+            catalog.metricStates[Metric.heartRate] = MetricQueryState(
+                metric: Metric.heartRate,
+                status: seen.isEmpty ? .empty : .ok,
+                lastSuccessAt: seen.isEmpty ? nil : now,
+                lastAttemptAt: now
+            )
         } catch {
             errors.append("心率")
+            catalog.metricStates[Metric.heartRate] = MetricQueryState(
+                metric: Metric.heartRate,
+                status: .failed,
+                lastAttemptAt: now,
+                error: "心率"
+            )
         }
 
         do {
@@ -82,8 +112,21 @@ final class HealthKitRepository: @unchecked Sendable {
                 )
                 revisions.append(Self.revision(sample))
             }
+            let count = rows.count
+            catalog.metricStates[Metric.restingHeartRate] = MetricQueryState(
+                metric: Metric.restingHeartRate,
+                status: count == 0 ? .empty : .ok,
+                lastSuccessAt: count == 0 ? nil : now,
+                lastAttemptAt: now
+            )
         } catch {
             errors.append("静息心率")
+            catalog.metricStates[Metric.restingHeartRate] = MetricQueryState(
+                metric: Metric.restingHeartRate,
+                status: .failed,
+                lastAttemptAt: now,
+                error: "静息心率"
+            )
         }
 
         do {
@@ -95,8 +138,21 @@ final class HealthKitRepository: @unchecked Sendable {
                 )
                 revisions.append(Self.revision(sample))
             }
+            let count = rows.count
+            catalog.metricStates[Metric.hrvSDNN] = MetricQueryState(
+                metric: Metric.hrvSDNN,
+                status: count == 0 ? .empty : .ok,
+                lastSuccessAt: count == 0 ? nil : now,
+                lastAttemptAt: now
+            )
         } catch {
             errors.append("HRV")
+            catalog.metricStates[Metric.hrvSDNN] = MetricQueryState(
+                metric: Metric.hrvSDNN,
+                status: .failed,
+                lastAttemptAt: now,
+                error: "HRV"
+            )
         }
 
         if let steps = HKObjectType.quantityType(forIdentifier: .stepCount) {
@@ -111,7 +167,21 @@ final class HealthKitRepository: @unchecked Sendable {
                     timeZone: timeZone,
                     options: .cumulativeSum
                 ))
-            } catch { errors.append("步数") }
+                catalog.metricStates[Metric.stepCount] = MetricQueryState(
+                    metric: Metric.stepCount,
+                    status: catalog.daily.contains(where: { $0.metric == Metric.stepCount }) ? .ok : .empty,
+                    lastSuccessAt: catalog.daily.contains(where: { $0.metric == Metric.stepCount }) ? now : nil,
+                    lastAttemptAt: now
+                )
+            } catch {
+                errors.append("步数")
+                catalog.metricStates[Metric.stepCount] = MetricQueryState(
+                    metric: Metric.stepCount,
+                    status: .failed,
+                    lastAttemptAt: now,
+                    error: "步数"
+                )
+            }
         }
 
         if let energy = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
@@ -126,7 +196,21 @@ final class HealthKitRepository: @unchecked Sendable {
                     timeZone: timeZone,
                     options: .cumulativeSum
                 ))
-            } catch { errors.append("活动能量") }
+                catalog.metricStates[Metric.activeEnergy] = MetricQueryState(
+                    metric: Metric.activeEnergy,
+                    status: catalog.daily.contains(where: { $0.metric == Metric.activeEnergy }) ? .ok : .empty,
+                    lastSuccessAt: catalog.daily.contains(where: { $0.metric == Metric.activeEnergy }) ? now : nil,
+                    lastAttemptAt: now
+                )
+            } catch {
+                errors.append("活动能量")
+                catalog.metricStates[Metric.activeEnergy] = MetricQueryState(
+                    metric: Metric.activeEnergy,
+                    status: .failed,
+                    lastAttemptAt: now,
+                    error: "活动能量"
+                )
+            }
         }
 
         if let exercise = HKObjectType.quantityType(forIdentifier: .appleExerciseTime) {
@@ -141,7 +225,21 @@ final class HealthKitRepository: @unchecked Sendable {
                     timeZone: timeZone,
                     options: .cumulativeSum
                 ))
-            } catch { errors.append("锻炼时间") }
+                catalog.metricStates[Metric.exerciseMinutes] = MetricQueryState(
+                    metric: Metric.exerciseMinutes,
+                    status: catalog.daily.contains(where: { $0.metric == Metric.exerciseMinutes }) ? .ok : .empty,
+                    lastSuccessAt: catalog.daily.contains(where: { $0.metric == Metric.exerciseMinutes }) ? now : nil,
+                    lastAttemptAt: now
+                )
+            } catch {
+                errors.append("锻炼时间")
+                catalog.metricStates[Metric.exerciseMinutes] = MetricQueryState(
+                    metric: Metric.exerciseMinutes,
+                    status: .failed,
+                    lastAttemptAt: now,
+                    error: "锻炼时间"
+                )
+            }
         }
 
         do {
@@ -166,22 +264,34 @@ final class HealthKitRepository: @unchecked Sendable {
                 )
                 revisions.append(Self.revision(sample))
             }
+            catalog.metricStates[metricGroupWorkout] = MetricQueryState(
+                metric: metricGroupWorkout,
+                status: catalog.workouts.isEmpty ? .empty : .ok,
+                lastSuccessAt: catalog.workouts.isEmpty ? nil : now,
+                lastAttemptAt: now
+            )
         } catch {
             errors.append("训练")
+            catalog.metricStates[metricGroupWorkout] = MetricQueryState(
+                metric: metricGroupWorkout,
+                status: .failed,
+                lastAttemptAt: now,
+                error: "训练"
+            )
         }
 
         catalog.revisions = revisions
-        catalog.lastSuccessfulRead = now
+        catalog.lastSuccessfulRead = catalog.metricStates.values.compactMap(\.lastSuccessAt).max()
         if !errors.isEmpty {
             catalog.readError = "部分读取未完成：\(errors.joined(separator: "、"))。已保留成功读到的记录。"
         }
         return catalog
     }
 
-    private func samples(type: HKSampleType, start: Date, end: Date, limit: Int = HKObjectQueryNoLimit) async throws -> [HKSample] {
+    private func samples(type: HKSampleType, start: Date, end: Date, limit: Int = HKObjectQueryNoLimit, ascending: Bool = true) async throws -> [HKSample] {
         try await withCheckedThrowingContinuation { continuation in
             let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
-            let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: ascending)
             let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: limit, sortDescriptors: [sort]) { _, samples, error in
                 if let error {
                     continuation.resume(throwing: error)

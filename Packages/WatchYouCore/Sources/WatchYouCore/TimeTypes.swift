@@ -45,6 +45,15 @@ public struct TimeWindow: Equatable, Hashable, Sendable, Codable {
     }
 }
 
+/// Inclusive-start, exclusive-end calendar day in `timeZone`. Does not use wall-clock call time.
+public func calendarDayWindow(containing date: Date, timeZone: TimeZone) -> TimeWindow {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let start = calendar.startOfDay(for: date)
+    let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(24 * 3600)
+    return TimeWindow(start: start, end: end, timeZone: timeZone)
+}
+
 /// Injectable source of the current moment.
 public protocol Clock: Sendable {
     var now: Date { get }

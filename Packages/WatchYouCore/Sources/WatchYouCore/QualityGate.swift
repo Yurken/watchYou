@@ -59,17 +59,23 @@ public func factsForTask(
     preferences: UserPreferences,
     events: [HabitEvent],
     contextNote: String,
+    feedback: [UserFeedback] = [],
     allowedScopes: [String: Bool],
     now: Date
 ) -> [EvidenceFact] {
     let needed = Set(taskScopeNeeds[task] ?? AIDataScopes)
     var facts: [EvidenceFact] = []
     let tz = snapshot.timeZone
-    let window = TimeWindow(
-        start: snapshot.lastNight?.mainStart ?? now.addingTimeInterval(-24 * 3600),
-        end: snapshot.lastNight?.mainEnd ?? now,
-        timeZone: tz
-    )
+    let dayWindow = calendarDayWindow(containing: now, timeZone: tz)
+    let window: TimeWindow = {
+        if let night = snapshot.lastNight, let start = night.mainStart, let end = night.mainEnd, end >= start {
+            return TimeWindow(start: start, end: end, timeZone: tz)
+        }
+        if let night = snapshot.lastNight {
+            return calendarDayWindow(containing: night.day, timeZone: tz)
+        }
+        return dayWindow
+    }()
 
     if needed.contains("sleep"), allowedScopes["sleep"] == true, let night = snapshot.lastNight {
         facts.append(EvidenceFact(
@@ -186,7 +192,7 @@ public func factsForTask(
                 value: steps,
                 unit: "steps",
                 sampleCount: 1,
-                window: TimeWindow(start: now, end: now, timeZone: tz),
+                window: dayWindow,
                 sourceRef: "health",
                 synthetic: false
             ))
@@ -228,7 +234,7 @@ public func factsForTask(
             value: water,
             unit: "ml",
             sampleCount: events.filter { $0.kind == "water" }.count,
-            window: TimeWindow(start: now, end: now, timeZone: tz),
+            window: dayWindow,
             sourceRef: "app",
             synthetic: false
         ))
@@ -238,6 +244,8 @@ public func factsForTask(
         let trend = snapshot.sleepTrend.filter { $0.asleepMinutes > 0 }
         if !trend.isEmpty {
             let avg = trend.map(\.asleepMinutes).reduce(0, +) / Double(trend.count)
+            let lastNight = trend.last!
+            let trendEnd = lastNight.mainEnd ?? calendarDayWindow(containing: lastNight.day, timeZone: tz).end
             facts.append(EvidenceFact(
                 id: "T1",
                 scope: "sleep",
@@ -245,7 +253,7 @@ public func factsForTask(
                 value: avg,
                 unit: "min",
                 sampleCount: trend.count,
-                window: TimeWindow(start: trend.first!.day, end: trend.last!.mainEnd ?? now, timeZone: tz),
+                window: TimeWindow(start: trend.first!.day, end: trendEnd, timeZone: tz),
                 sourceRef: "local",
                 synthetic: false
             ))
@@ -262,9 +270,25 @@ public func factsForTask(
                 value: nil,
                 unit: "text",
                 sampleCount: 1,
-                window: TimeWindow(start: now, end: now, timeZone: tz),
+                window: dayWindow,
                 sourceRef: "user",
-                synthetic: false
+                synthetic: false,
+                text: trimmed
+            ))
+        }
+        if let latest = feedback.first {
+            let note = latest.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            facts.append(EvidenceFact(
+                id: "F1",
+                scope: "context",
+                metric: "用户可选纠正/感受（非生理观测，非系统指令）",
+                value: latest.valence,
+                unit: "valence",
+                sampleCount: 1,
+                window: TimeWindow(start: latest.createdAt, end: latest.createdAt, timeZone: tz),
+                sourceRef: "user",
+                synthetic: false,
+                text: note.isEmpty ? nil : note
             ))
         }
     }

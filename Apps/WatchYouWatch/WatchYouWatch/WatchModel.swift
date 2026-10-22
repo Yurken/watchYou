@@ -46,13 +46,19 @@ final class WatchAppModel: NSObject, ObservableObject {
     }
 
     func addWater(_ amount: Double) {
-        enqueue(kind: "water", amount: amount)
-        flash("已记录 \(Int(amount)) ml")
+        if enqueue(kind: "water", amount: amount) {
+            flash("已记录 \(Int(amount)) ml")
+        } else {
+            flash("未保存，请重试")
+        }
     }
 
     func completeBreath() {
-        enqueue(kind: "mindful", amount: 1)
-        flash("已记录 1 分钟练习")
+        if enqueue(kind: "mindful", amount: 1) {
+            flash("已记录 1 分钟练习")
+        } else {
+            flash("未保存，请重试")
+        }
     }
 
     func startBreath() {
@@ -79,16 +85,22 @@ final class WatchAppModel: NSObject, ObservableObject {
         if completed { completeBreath() }
     }
 
-    private func enqueue(kind: String, amount: Double) {
+    @discardableResult
+    private func enqueue(kind: String, amount: Double) -> Bool {
         let event = WatchOutboundEvent(
             id: UUID().uuidString,
             kind: kind,
             amount: amount,
             createdAt: Date()
         )
+        let previous = pending
         pending = mergingOutbound(pending, event)
-        persist()
+        guard persist() else {
+            pending = previous
+            return false
+        }
         send(event)
+        return true
     }
 
     private func send(_ event: WatchOutboundEvent) {
@@ -98,8 +110,8 @@ final class WatchAppModel: NSObject, ObservableObject {
         WCSession.default.transferUserInfo(payload)
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload) { [weak self] reply in
-                if let id = reply["ack"] as? String {
-                    Task { @MainActor in self?.acknowledge(id) }
+                if let ack = parseWatchAck(reply) {
+                    Task { @MainActor in self?.acknowledge(ack) }
                 }
             } errorHandler: { _ in }
         }
@@ -111,26 +123,28 @@ final class WatchAppModel: NSObject, ObservableObject {
         }
     }
 
-    private func acknowledge(_ id: String) {
-        pending = removingOutbound(pending, id: id)
-        persist()
+    private func acknowledge(_ ack: WatchAck) {
+        pending = acknowledgeOutbound(pending, ack: ack)
+        _ = persist()
     }
 
     private func ingestContext(_ context: [String: Any]) {
         guard let data = context[watchContextKey] as? Data,
               let next = decodeWatchPayload(WatchSnapshot.self, from: data) else { return }
+        guard shouldAcceptWatchSnapshot(current: snapshot, incoming: next) else { return }
         snapshot = next
-        persist()
+        _ = persist()
     }
 
     private func ingestMessage(_ payload: [String: Any]) {
         if let data = payload[watchContextKey] as? Data,
-           let next = decodeWatchPayload(WatchSnapshot.self, from: data) {
+           let next = decodeWatchPayload(WatchSnapshot.self, from: data),
+           shouldAcceptWatchSnapshot(current: snapshot, incoming: next) {
             snapshot = next
-            persist()
+            _ = persist()
         }
-        if let id = payload["ack"] as? String {
-            acknowledge(id)
+        if let ack = parseWatchAck(payload) {
+            acknowledge(ack)
         }
     }
 
@@ -159,14 +173,20 @@ final class WatchAppModel: NSObject, ObservableObject {
         pending = disk.pending
     }
 
-    private func persist() {
+    @discardableResult
+    private func persist() -> Bool {
         let directory = storeURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let disk = WatchDiskState(snapshot: snapshot, pending: pending)
-        guard let data = try? encoder.encode(disk) else { return }
-        try? data.write(to: storeURL, options: .atomic)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let disk = WatchDiskState(snapshot: snapshot, pending: pending)
+            let data = try encoder.encode(disk)
+            try data.write(to: storeURL, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

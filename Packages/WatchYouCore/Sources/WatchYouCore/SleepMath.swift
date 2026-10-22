@@ -61,6 +61,12 @@ public func unionAsleepMinutes(intervals: [SleepInterval]) -> Double {
     return total / 60.0
 }
 
+public func unionIntervalMinutes(_ intervals: [(start: Date, end: Date)]) -> Double {
+    unionAsleepMinutes(
+        intervals: intervals.map { SleepInterval(start: $0.start, end: $0.end, category: .asleep, sourceRef: "") }
+    )
+}
+
 /// Slice the timeline by all interval boundaries. Segments where the same source provides conflicting stages are marked `.unknown`.
 public func timelineSegments(intervals: [SleepInterval]) -> [SleepSegment] {
     let valid = intervals.filter { $0.end > $0.start }

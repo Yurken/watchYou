@@ -11,6 +11,7 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
     public let window: TimeWindow
     public let sourceRef: String
     public let synthetic: Bool
+    public let text: String?
 
     public init(
         id: String,
@@ -21,7 +22,8 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         sampleCount: Int,
         window: TimeWindow,
         sourceRef: String,
-        synthetic: Bool
+        synthetic: Bool,
+        text: String? = nil
     ) {
         self.id = id
         self.scope = scope
@@ -32,7 +34,53 @@ public struct EvidenceFact: Equatable, Sendable, Codable {
         self.window = window
         self.sourceRef = sourceRef
         self.synthetic = synthetic
+        self.text = text
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, scope, metric, value, unit, sampleCount, window, sourceRef, synthetic, text
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        scope = try container.decodeIfPresent(String.self, forKey: .scope)
+        metric = try container.decode(String.self, forKey: .metric)
+        value = try container.decodeIfPresent(Double.self, forKey: .value)
+        unit = try container.decode(String.self, forKey: .unit)
+        sampleCount = try container.decode(Int.self, forKey: .sampleCount)
+        window = try container.decode(TimeWindow.self, forKey: .window)
+        sourceRef = try container.decode(String.self, forKey: .sourceRef)
+        synthetic = try container.decode(Bool.self, forKey: .synthetic)
+        text = try container.decodeIfPresent(String.self, forKey: .text)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(scope, forKey: .scope)
+        try container.encode(metric, forKey: .metric)
+        try container.encode(value, forKey: .value)
+        try container.encode(unit, forKey: .unit)
+        try container.encode(sampleCount, forKey: .sampleCount)
+        try container.encode(window, forKey: .window)
+        try container.encode(sourceRef, forKey: .sourceRef)
+        try container.encode(synthetic, forKey: .synthetic)
+        try container.encodeIfPresent(text, forKey: .text)
+    }
+}
+
+/// Authorized C1 body that was actually included in the evidence packet.
+public func sentContextText(_ facts: [EvidenceFact]) -> String {
+    guard let fact = facts.first(where: { $0.id == "C1" && $0.scope == "context" }) else {
+        return ""
+    }
+    return fact.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+}
+
+/// True only when a C1 context fact with non-empty authorized text is present.
+public func hasSendableContext(_ facts: [EvidenceFact]) -> Bool {
+    !sentContextText(facts).isEmpty
 }
 
 /// Packet sent to an AI provider. Fields mirror PRD §26.1.

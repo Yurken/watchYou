@@ -48,7 +48,7 @@ final class ProductFoundationTests: XCTestCase {
         let now = date(2026, 10, 21, 13, 58)
         let snapshot = aggregateHealth(catalog: catalog, preferences: UserPreferences(), now: now, timeZone: tz)
 
-        XCTAssertEqual(snapshot.lastNight?.asleepMinutes ?? 0, 446, accuracy: 1)
+        XCTAssertEqual(snapshot.lastNight?.asleepMinutes ?? 0, 428, accuracy: 1)
         XCTAssertEqual(snapshot.lastNight?.naps.count, 1)
         XCTAssertEqual(snapshot.lastNight?.naps.first?.minutes ?? 0, 30, accuracy: 1)
         XCTAssertNil(snapshot.sleepScore, "单夜不足以构成规律基线，应弃权而不是给分")
@@ -469,9 +469,9 @@ final class ProductFoundationTests: XCTestCase {
             stale: false,
             includedWaterIds: ["w1"]
         )
-        XCTAssertEqual(displayedWater(snapshot: snapshot, pending: [pending]), 250)
-        XCTAssertEqual(displayedWater(snapshot: snapshot, pending: [pending, extra]), 400)
-        XCTAssertEqual(displayedWater(snapshot: nil, pending: [pending]), 250)
+        XCTAssertEqual(displayedWater(snapshot: snapshot, pending: [pending], now: now), 250)
+        XCTAssertEqual(displayedWater(snapshot: snapshot, pending: [pending, extra], now: now), 400)
+        XCTAssertEqual(displayedWater(snapshot: nil, pending: [pending], now: now), 250)
 
         let health = HealthSnapshot(generatedAt: now, timeZone: tz, isEmpty: true)
         let watch = makeWatchSnapshot(
@@ -483,7 +483,7 @@ final class ProductFoundationTests: XCTestCase {
         )
         XCTAssertEqual(watch.waterMl, 250)
         XCTAssertEqual(watch.includedWaterIds, ["w1"])
-        XCTAssertEqual(displayedWater(snapshot: watch, pending: [pending]), 250)
+        XCTAssertEqual(displayedWater(snapshot: watch, pending: [pending], now: now), 250)
 
         let json = """
         {"generatedAt":"2026-10-21T05:58:00Z","todayTitle":"t","todaySummary":"s","moodLabel":"m","moodNote":"n","sleepText":"sleep","sleepWindowText":"—","recoveryText":"—","waterMl":250,"waterGoal":2000,"empty":false,"stale":false}

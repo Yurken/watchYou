@@ -7,7 +7,7 @@ final class PhoneConnectivity: NSObject, ObservableObject {
     @Published var note = "尚未激活手表会话"
     @Published var reachable = false
 
-    var onEvent: ((WatchOutboundEvent) -> Void)?
+    var onEvent: ((WatchOutboundEvent) -> WatchAck?)?
     var onNoteChange: ((String) -> Void)?
 
     func activate() {
@@ -34,9 +34,9 @@ final class PhoneConnectivity: NSObject, ObservableObject {
         }
     }
 
-    func ack(id: String) {
+    func ack(_ ack: WatchAck) {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        let payload = ["ack": id]
+        let payload = watchAckPayload(ack)
         WCSession.default.transferUserInfo(payload)
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
@@ -52,14 +52,14 @@ final class PhoneConnectivity: NSObject, ObservableObject {
     }
 
     @discardableResult
-    private func ingest(_ payload: [String: Any]) -> String? {
+    private func ingest(_ payload: [String: Any]) -> WatchAck? {
         guard let data = payload[watchEventKey] as? Data,
               let event = decodeWatchPayload(WatchOutboundEvent.self, from: data) else {
             return nil
         }
-        onEvent?(event)
-        ack(id: event.id)
-        return event.id
+        guard let ack = onEvent?(event) else { return nil }
+        self.ack(ack)
+        return ack
     }
 }
 
@@ -86,8 +86,11 @@ extension PhoneConnectivity: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         Task { @MainActor in
-            let id = ingest(message)
-            replyHandler(["ack": id ?? "ok"])
+            if let ack = ingest(message) {
+                replyHandler(watchAckPayload(ack))
+            } else {
+                replyHandler([:])
+            }
         }
     }
 

@@ -14,13 +14,11 @@ public func aggregateHealth(
 
     let liveSamples = catalog.samples.filter { !$0.deleted }
     let staged = stagedSleep(from: liveSamples, preferred: preferences.preferredSleepSource)
-    let nights = buildNights(staged: staged, calendar: calendar, timeZone: timeZone)
+    let inBed = inBedTimeline(from: liveSamples, preferred: preferences.preferredSleepSource)
+    let nights = buildNights(staged: staged, inBed: inBed, calendar: calendar, timeZone: timeZone)
+    let windowStart = calendar.date(byAdding: .day, value: -28, to: today) ?? today
     let lastNight = nights.first { $0.day == today }
-        ?? nights.first { $0.day == calendar.date(byAdding: .day, value: -1, to: today) }
-        ?? nights.last
-
-    let historyNights = nights.filter { $0.day < today && $0.asleepMinutes > 0 }
-    let baselineNights = historyNights.suffix(28)
+    let baselineNights = nightsInCalendarWindow(nights, from: windowStart, before: today)
     let midpointHistory = baselineNights.compactMap(\.midpointMinutes)
     let midpointMean = circularMeanMinutes(Array(midpointHistory))
     let deviation = {
@@ -40,8 +38,8 @@ public func aggregateHealth(
     }
 
     let hrvByNight = nocturnalHRVByNight(samples: liveSamples, nights: nights)
-    let hrvHistory = nights.filter { $0.day < today }.compactMap { hrvByNight[$0.day] }
-    let hrvBaseline = median(Array(hrvHistory.suffix(28)))
+    let hrvHistory = baselineNights.compactMap { hrvByNight[$0.day] }
+    let hrvBaseline = median(hrvHistory)
     let lastHRV = lastNight.flatMap { hrvByNight[$0.day] }
     let lastHRVCount = lastNight.map { night in
         liveSamples.filter { sample in
@@ -52,13 +50,23 @@ public func aggregateHealth(
         }.count
     } ?? 0
 
-    let rhrSamples = liveSamples.filter { $0.metric == Metric.restingHeartRate }
-    let rhrToday = rhrSamples.filter { calendar.startOfDay(for: $0.window.end) == today }.last?.value
-    let rhrHistory = rhrSamples
-        .filter { calendar.startOfDay(for: $0.window.end) < today }
-        .compactMap(\.value)
-    let rhrBaseline = median(Array(rhrHistory.suffix(28)))
-    let rhr = rhrToday ?? rhrSamples.last?.value
+    let nextDay = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+    let rhrByDay = dailyMedianValues(
+        samples: liveSamples,
+        metric: Metric.restingHeartRate,
+        from: windowStart,
+        before: today,
+        timeZone: timeZone
+    )
+    let rhrToday = dailyMedianValues(
+        samples: liveSamples,
+        metric: Metric.restingHeartRate,
+        from: today,
+        before: nextDay,
+        timeZone: timeZone
+    )[today]
+    let rhrBaseline = median(Array(rhrByDay.values))
+    let rhr = rhrToday
 
     let recovery = {
         guard let hrv = lastHRV, let rhrValue = rhr, let sleepValue = sleep else { return nil as RecoveryScore? }
@@ -68,18 +76,19 @@ public func aggregateHealth(
             sleepScoreValue: Double(sleepValue.value),
             baselineHRV: hrvBaseline ?? hrv,
             baselineRHR: rhrBaseline ?? rhrValue,
-            validDays: min(hrvHistory.suffix(28).count, 28)
+            validDays: hrvHistory.count
         )
     }()
 
     let heartSamples = liveSamples.filter { $0.metric == Metric.heartRate }
+    let newestHeart = latestHeartRateSample(from: heartSamples)
     let preferredHeart = pickPreferred(
-        conflicts: recentCluster(heartSamples, around: heartSamples.last?.window.end ?? now, window: 60),
+        conflicts: recentCluster(heartSamples, around: newestHeart?.window.end ?? now, window: 60),
         preferred: preferences.preferredHeartSource
     )
-    let latestHeart = preferredHeart.samples.last ?? heartSamples.max(by: { $0.window.end < $1.window.end })
+    let latestHeart = preferredHeart.samples.max(by: sampleEndAscending) ?? newestHeart
     let dayAgo = now.addingTimeInterval(-24 * 3600)
-    let series = heartSamples.filter { $0.window.end >= dayAgo }.sorted { $0.window.start < $1.window.start }
+    let series = heartRateSeries(from: heartSamples, since: dayAgo)
 
     let recentHRVSample = liveSamples
         .filter { $0.metric == Metric.hrvSDNN && now.timeIntervalSince($0.window.end) <= 3600 }
@@ -132,11 +141,30 @@ public func aggregateHealth(
         readError: catalog.readError,
         isEmpty: catalog.isEmpty,
         duringWorkout: duringWorkout,
-        baselineNights: baselineNights.count
+        baselineNights: baselineNights.count,
+        metricStates: catalog.metricStates,
+        analysisDay: today
     )
 }
 
 func stagedSleep(from samples: [HealthSampleRef], preferred: String?) -> [SleepStageSlice] {
+    resolveSleepTimeline(
+        samples: samples.filter { sample in
+            guard let stage = SleepStage.from(metric: sample.metric) else { return false }
+            return stage != .inBed
+        },
+        preferred: preferred
+    )
+}
+
+func inBedTimeline(from samples: [HealthSampleRef], preferred: String?) -> [SleepStageSlice] {
+    resolveSleepTimeline(
+        samples: samples.filter { SleepStage.from(metric: $0.metric) == .inBed },
+        preferred: preferred
+    )
+}
+
+private func resolveSleepTimeline(samples: [HealthSampleRef], preferred: String?) -> [SleepStageSlice] {
     let valid = samples.compactMap { sample -> SleepStageSlice? in
         guard let stage = SleepStage.from(metric: sample.metric), sample.window.end > sample.window.start else { return nil }
         return SleepStageSlice(start: sample.window.start, end: sample.window.end, stage: stage, sourceRef: sample.sourceRef)
@@ -150,29 +178,46 @@ func stagedSleep(from samples: [HealthSampleRef], preferred: String?) -> [SleepS
         let end = cuts[index + 1]
         let covering = valid.filter { $0.start <= start && $0.end >= end }
         guard !covering.isEmpty else { continue }
-        let chosen = covering.sorted { lhs, rhs in
-            let lp = lhs.sourceRef == preferred ? 0 : 1
-            let rp = rhs.sourceRef == preferred ? 0 : 1
+        let grouped = Dictionary(grouping: covering, by: \.sourceRef)
+        var candidates: [(source: String, stage: SleepStage)] = []
+        for (source, slices) in grouped {
+            if let stage = resolvedSleepStage(slices.map(\.stage)) {
+                candidates.append((source, stage))
+            }
+        }
+        guard let chosen = candidates.sorted(by: { lhs, rhs in
+            let lp = lhs.source == preferred ? 0 : 1
+            let rp = rhs.source == preferred ? 0 : 1
             if lp != rp { return lp < rp }
             let lu = lhs.stage == .unspecified ? 1 : 0
             let ru = rhs.stage == .unspecified ? 1 : 0
             if lu != ru { return lu < ru }
-            return lhs.sourceRef < rhs.sourceRef
-        }.first!
+            return lhs.source < rhs.source
+        }).first else { continue }
         if let last = result.last,
            last.end == start,
            last.stage == chosen.stage,
-           last.sourceRef == chosen.sourceRef {
+           last.sourceRef == chosen.source {
             result[result.count - 1] = SleepStageSlice(start: last.start, end: end, stage: last.stage, sourceRef: last.sourceRef)
         } else {
-            result.append(SleepStageSlice(start: start, end: end, stage: chosen.stage, sourceRef: chosen.sourceRef))
+            result.append(SleepStageSlice(start: start, end: end, stage: chosen.stage, sourceRef: chosen.source))
         }
     }
     return result
 }
 
+func resolvedSleepStage(_ stages: [SleepStage]) -> SleepStage? {
+    let unique = Set(stages)
+    if unique.count <= 1 { return unique.first }
+    let specified = unique.filter { $0 != .unspecified }
+    if specified.count == 1 { return specified.first }
+    if specified.isEmpty { return .unspecified }
+    return nil
+}
+
 private func buildNights(
     staged: [SleepStageSlice],
+    inBed: [SleepStageSlice],
     calendar: Calendar,
     timeZone: TimeZone
 ) -> [SleepNight] {
@@ -190,12 +235,18 @@ private func buildNights(
                 ?? endingToday.max(by: { $0.duration < $1.duration }) else { return nil }
 
         let mainSlices = staged.filter { $0.start < main.end && $0.end > main.start }
-        let asleepMinutes = mainSlices.filter(\.stage.isAsleep).reduce(0) { $0 + $1.minutes }
-        let awakeMinutes = mainSlices.filter { $0.stage == .awake }.reduce(0) { $0 + $1.minutes }
-        let inBedMinutes = mainSlices.filter { $0.stage == .inBed }.reduce(0) { $0 + $1.minutes }
+        let asleepMinutes = unionIntervalMinutes(
+            mainSlices.filter(\.stage.isAsleep).map { (max($0.start, main.start), min($0.end, main.end)) }
+        )
+        let awakeMinutes = unionIntervalMinutes(
+            mainSlices.filter { $0.stage == .awake }.map { (max($0.start, main.start), min($0.end, main.end)) }
+        )
+        let inBedMinutes = unionIntervalMinutes(
+            inBed.filter { $0.start < main.end && $0.end > main.start }.map { (max($0.start, main.start), min($0.end, main.end)) }
+        )
         var stageMinutes: [String: Double] = [:]
         for slice in mainSlices where slice.stage.isAsleep || slice.stage == .awake {
-            stageMinutes[slice.stage.rawValue, default: 0] += slice.minutes
+            stageMinutes[slice.stage.rawValue, default: 0] += overlapMinutes(slice.start, slice.end, main.start, main.end)
         }
 
         let span = main.end.timeIntervalSince(main.start) / 60
@@ -207,8 +258,14 @@ private func buildNights(
 
         let naps = endingToday
             .filter { $0.start != main.start || $0.end != main.end }
-            .map { NapRecord(start: $0.start, end: $0.end, minutes: $0.duration / 60, sourceRef: $0.sourceRef) }
-            .filter { $0.minutes >= 10 && $0.minutes <= 180 }
+            .compactMap { episode -> NapRecord? in
+                let minutes = unionIntervalMinutes(
+                    staged.filter { $0.stage.isAsleep && $0.start < episode.end && $0.end > episode.start }
+                        .map { (max($0.start, episode.start), min($0.end, episode.end)) }
+                )
+                guard minutes >= 10 && minutes <= 180 else { return nil }
+                return NapRecord(start: episode.start, end: episode.end, minutes: minutes, sourceRef: episode.sourceRef)
+            }
 
         return SleepNight(
             day: day,
@@ -225,6 +282,13 @@ private func buildNights(
             midpointMinutes: midpoint
         )
     }
+}
+
+private func overlapMinutes(_ start: Date, _ end: Date, _ windowStart: Date, _ windowEnd: Date) -> Double {
+    let lo = max(start, windowStart)
+    let hi = min(end, windowEnd)
+    guard hi > lo else { return 0 }
+    return hi.timeIntervalSince(lo) / 60
 }
 
 private struct SleepEpisode {

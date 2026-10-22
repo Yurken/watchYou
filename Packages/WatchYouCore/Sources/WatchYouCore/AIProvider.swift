@@ -5,11 +5,33 @@ public protocol AIHTTPTransport: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 
-/// URLSession-based transport. Refuses redirects by validating the response URL matches the request.
+/// Rejects HTTP redirects before the next hop is requested, so credentials never leave the bound recipient.
+public final class RedirectRejectingSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    public static let shared = RedirectRejectingSessionDelegate()
+
+    public func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
+public func makeNonRedirectingURLSession(configuration: URLSessionConfiguration = .ephemeral) -> URLSession {
+    let config = configuration.copy() as! URLSessionConfiguration
+    config.httpShouldSetCookies = false
+    config.httpCookieAcceptPolicy = .never
+    return URLSession(configuration: config, delegate: RedirectRejectingSessionDelegate.shared, delegateQueue: nil)
+}
+
+/// URLSession transport that does not follow redirects.
 public final class URLSessionTransport: AIHTTPTransport, @unchecked Sendable {
     private let session: URLSession
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = makeNonRedirectingURLSession()) {
         self.session = session
     }
 
@@ -17,9 +39,6 @@ public final class URLSessionTransport: AIHTTPTransport, @unchecked Sendable {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIError.transport("非 HTTP 响应")
-        }
-        if httpResponse.url != request.url {
-            throw AIError.badURL("请求发生重定向")
         }
         return (data, httpResponse)
     }
@@ -99,11 +118,34 @@ public struct AIProvider: Sendable {
     public func generate(profile: AIProviderProfile, key: String?, system: String, user: String) async throws -> String {
         let request = try buildRequest(profile: profile, key: key, system: system, user: user)
         let (data, response) = try await transport.data(for: request)
-        if response.url != request.url {
-            throw AIError.badURL("请求发生重定向")
-        }
-        try checkHTTPStatus(response)
+        try checkHTTPStatus(response, requestURL: request.url)
         return try extractText(protocolName: profile.protocolName, data: data)
+    }
+
+    /// GET /models without health payload. Uses the same transport and redirect policy as generate.
+    public func listModels(profile: AIProviderProfile, key: String?) async throws -> [String] {
+        if profile.auth != "none" && (key == nil || key!.isEmpty) {
+            throw AIError.unconfigured("请填写当前服务的 API Key，或明确选择无认证")
+        }
+        let url = URL(string: try endpoint(for: profile, kind: "models"))!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = TimeInterval(profile.timeout)
+        request.httpShouldHandleCookies = false
+        if let key, !key.isEmpty {
+            if profile.auth == "bearer" {
+                request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+            } else if profile.auth == "x-api-key" {
+                request.setValue(key, forHTTPHeaderField: "x-api-key")
+            }
+        }
+        let (data, response) = try await transport.data(for: request)
+        try checkHTTPStatus(response, requestURL: request.url)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let array = json["data"] as? [[String: Any]] else {
+            throw AIError.invalidJSON("接口返回格式不符")
+        }
+        return array.compactMap { $0["id"] as? String }
     }
 
     /// Build a provider-specific URLRequest.
@@ -160,8 +202,14 @@ public struct AIProvider: Sendable {
         return request
     }
 
-    private func checkHTTPStatus(_ response: HTTPURLResponse) throws {
+    func checkHTTPStatus(_ response: HTTPURLResponse, requestURL: URL?) throws {
         let code = response.statusCode
+        if [301, 302, 303, 307, 308].contains(code) {
+            throw AIError.badURL("请求发生重定向，未跟随跳转")
+        }
+        if let requestURL, let responseURL = response.url, responseURL != requestURL {
+            throw AIError.badURL("请求发生重定向，未跟随跳转")
+        }
         guard (200..<300).contains(code) else {
             switch code {
             case 401, 403: throw AIError.unauthorized

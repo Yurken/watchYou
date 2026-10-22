@@ -209,7 +209,7 @@ struct MoodView: View {
                     ToolbarItem(placement: .cancellationAction) { Button("关闭") { showContext = false } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("保存背景") {
-                            model.persist()
+                            model.saveContextNote()
                             showContext = false
                         }
                     }

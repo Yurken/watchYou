@@ -56,9 +56,14 @@ final class AppModel: ObservableObject {
     private let provider = AIProvider()
     private let cache = InferenceCache()
     private var aiTask: Task<Void, Never>?
+    private var liveRequestID: UUID?
     private var waterUndo: HabitEvent?
     private var toastTask: Task<Void, Never>?
     private var didLoad = false
+    private var healthRefreshGeneration = 0
+    private var lastCatalog = HealthCatalog()
+    private var lastLiveHash: [String: String] = [:]
+    private var lastLiveAt: [String: Date] = [:]
 
     var preferences: UserPreferences { state.preferences }
     var config: AIConfig { state.aiConfig }
@@ -116,11 +121,19 @@ final class AppModel: ObservableObject {
     }
 
     func refreshHealth() async {
+        healthRefreshGeneration += 1
+        let generation = healthRefreshGeneration
         isRefreshing = true
-        defer { isRefreshing = false }
-        let catalog = await health.load(now: Date(), timeZone: .current, rpe: state.rpeByWorkout)
+        defer {
+            if shouldApplyHealthRefresh(startedGeneration: generation, currentGeneration: healthRefreshGeneration) {
+                isRefreshing = false
+            }
+        }
+        let incoming = await health.load(now: Date(), timeZone: .current, rpe: state.rpeByWorkout)
+        guard shouldApplyHealthRefresh(startedGeneration: generation, currentGeneration: healthRefreshGeneration) else { return }
+        lastCatalog = mergeHealthCatalog(previous: lastCatalog, incoming: incoming)
         snapshot = aggregateHealth(
-            catalog: catalog,
+            catalog: lastCatalog,
             preferences: state.preferences,
             events: state.events,
             now: Date(),
@@ -140,13 +153,18 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func persist() {
+    @discardableResult
+    func persist() -> Bool {
+        state.watchSnapshotRevision += 1
         do {
             try store.save(state)
+            pushWatch()
+            return true
         } catch {
+            state.watchSnapshotRevision -= 1
             flash("本地保存失败")
+            return false
         }
-        pushWatch()
     }
 
     func flash(_ text: String) {
@@ -161,34 +179,56 @@ final class AppModel: ObservableObject {
     func addWater(_ amount: Double) {
         waterUndo = nil
         let event = HabitEvent(id: UUID().uuidString, kind: "water", amount: amount, createdAt: Date())
-        state.events = addingEvent(state.events, event)
-        persist()
-        flash("已记录 \(Int(amount)) ml")
+        let merged = addingEvent(state.events, event, tombstones: state.eventTombstones)
+        state.events = merged.events
+        state.eventTombstones = merged.tombstones
+        if persist() {
+            flash("已记录 \(Int(amount)) ml")
+        }
     }
 
     func undoWater() {
         if let restored = waterUndo {
-            state.events = addingEvent(state.events, restored)
+            let merged = addingEvent(state.events, restored, tombstones: state.eventTombstones)
+            state.events = merged.events
+            state.eventTombstones = merged.tombstones
             waterUndo = nil
-            persist()
-            flash("已恢复 \(Int(restored.amount)) ml")
+            if persist() {
+                flash("已恢复 \(Int(restored.amount)) ml")
+            }
             return
         }
         guard let index = state.events.lastIndex(where: { $0.kind == "water" }) else {
             flash("没有可撤销的饮水记录")
             return
         }
-        waterUndo = state.events[index]
-        state.events.remove(at: index)
-        persist()
-        flash("已撤销 \(Int(waterUndo?.amount ?? 0)) ml，再次点击可恢复")
+        let current = state.events[index]
+        let deletedRevision = current.revision + 1
+        waterUndo = HabitEvent(
+            id: current.id,
+            kind: current.kind,
+            amount: current.amount,
+            createdAt: current.createdAt,
+            pending: current.pending,
+            revision: deletedRevision + 1,
+            source: current.source
+        )
+        let removed = deletingEvent(state.events, id: current.id, revision: deletedRevision, tombstones: state.eventTombstones)
+        state.events = removed.events
+        state.eventTombstones = removed.tombstones
+        if persist() {
+            flash("已撤销 \(Int(current.amount)) ml，再次点击可恢复")
+        }
     }
 
     func completeBreath() {
         let event = HabitEvent(id: UUID().uuidString, kind: "mindful", amount: 1, createdAt: Date())
-        state.events = addingEvent(state.events, event)
-        persist()
-        flash("已记录 1 分钟练习")
+        let merged = addingEvent(state.events, event, tombstones: state.eventTombstones)
+        state.events = merged.events
+        state.eventTombstones = merged.tombstones
+        if persist() {
+            flash("已记录 1 分钟练习")
+        }
     }
 
     func setWaterGoal(_ value: Int) {
@@ -224,6 +264,19 @@ final class AppModel: ObservableObject {
         state.feedback.insert(item, at: 0)
         persist()
         flash("感受已保存在本应用，不会自动写入健康库")
+        if config.auto {
+            Task { await runAI(task: "mood", automatic: true, force: true) }
+        }
+    }
+
+    func saveContextNote() {
+        persist()
+        if config.auto {
+            Task {
+                await runAI(task: "today", automatic: true, force: true)
+                await runAI(task: "mood", automatic: true, force: true)
+            }
+        }
     }
 
     func deleteFeedback(_ id: String) {
@@ -239,7 +292,7 @@ final class AppModel: ObservableObject {
         state.inferences[task]
     }
 
-    func runAI(task: String, question: String = "", automatic: Bool = false, approved: Bool = false) async {
+    func runAI(task: String, question: String = "", automatic: Bool = false, approved: Bool = false, force: Bool = false) async {
         guard AIModules.contains(task), config.modules[task] != false else {
             if !automatic { flash("此 AI 功能已关闭") }
             return
@@ -250,7 +303,7 @@ final class AppModel: ObservableObject {
         }
 
         let facts = currentFacts(task: task)
-        let hasContext = facts.contains { $0.scope == "context" }
+        let hasContext = hasSendableContext(facts)
         if let gate = qualityGate(task: task, snapshot: snapshot, config: config, facts: facts, hasContext: hasContext, now: Date()) {
             if !automatic { flash(gate) }
             return
@@ -285,7 +338,26 @@ final class AppModel: ObservableObject {
             return
         }
 
+        if automatic {
+            let key = liveCacheKey(task: task, facts: facts, question: question, profile: profile)
+            let now = Date()
+            if !shouldStartAutomaticLive(
+                task: task,
+                inputHash: key.inputHash,
+                previousHash: lastLiveHash[task],
+                lastAttemptAt: lastLiveAt[task],
+                now: now,
+                moduleEnabled: config.modules[task] != false,
+                consentValid: consentMatches(state.consent, profile: profile, scopes: config.scopes),
+                force: force
+            ) {
+                return
+            }
+            lastLiveAt[task] = now
+        }
+
         aiTask?.cancel()
+        liveRequestID = nil
         aiTask = Task { await performLive(task: task, facts: facts, question: question, automatic: automatic) }
         await aiTask?.value
     }
@@ -305,9 +377,19 @@ final class AppModel: ObservableObject {
     }
 
     func cancelAI() {
+        liveRequestID = nil
         aiTask?.cancel()
         aiBusy = nil
-        flash("已取消当前请求")
+        flash("已停止等待本次结果。已发出的请求无法撤回。")
+    }
+
+    private func invalidateLiveWork() {
+        liveRequestID = nil
+        aiTask?.cancel()
+        aiBusy = nil
+        lastLiveHash = [:]
+        lastLiveAt = [:]
+        Task { await cache.removeAll() }
     }
 
     func saveAIConfig(
@@ -372,10 +454,11 @@ final class AppModel: ObservableObject {
                 modules: modules,
                 scopes: scopes
             )
+            invalidateLiveWork()
+            state.generation += 1
             if destinationChanged {
                 state.consent = nil
                 state.inferences = [:]
-                state.generation += 1
             }
             persist()
             flash("AI 配置已保存；尚未发送健康摘要")
@@ -395,33 +478,11 @@ final class AppModel: ObservableObject {
 
     func testModels() async -> Result<(Int, [String]), Error> {
         do {
-            let profile = config.activeProfile
-            let urlString = try endpoint(for: profile, kind: "models")
-            guard let url = URL(string: urlString) else { throw AIError.badURL("URL 无效") }
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = TimeInterval(profile.timeout)
-            request.httpShouldHandleCookies = false
-            if profile.auth != "none" {
-                let key = currentSecret()
-                if key.isEmpty { throw AIError.unconfigured("请填写 API Key，或在保存后再测试") }
-                if profile.auth == "bearer" {
-                    request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-                } else {
-                    request.setValue(key, forHTTPHeaderField: "x-api-key")
-                }
-            }
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw AIError.transport("非 HTTP 响应") }
-            if http.url != request.url { throw AIError.badURL("请求发生重定向") }
-            guard (200..<300).contains(http.statusCode) else {
-                throw AIError.transport("HTTP \(http.statusCode)")
-            }
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let array = json["data"] as? [[String: Any]] else {
-                throw AIError.invalidJSON("接口返回格式不符")
-            }
-            let ids = array.compactMap { $0["id"] as? String }
+            let secret = currentSecret()
+            let ids = try await provider.listModels(
+                profile: config.activeProfile,
+                key: secret.isEmpty ? nil : secret
+            )
             return .success((ids.count, Array(ids.prefix(8))))
         } catch {
             return .failure(error)
@@ -434,7 +495,10 @@ final class AppModel: ObservableObject {
 
     func importData(_ data: Data) {
         do {
-            state = try importBackup(data)
+            let next = try importBackup(data)
+            invalidateLiveWork()
+            state = next
+            state.generation += 1
             persist()
             Task { await refreshHealth() }
             flash("备份已恢复；AI 回到演示模式，需重新授权外发")
@@ -444,11 +508,14 @@ final class AppModel: ObservableObject {
     }
 
     func resetRecords() {
+        invalidateLiveWork()
         state.events = []
         state.feedback = []
         state.inferences = [:]
         state.chat = []
         state.contextNote = ""
+        state.eventTombstones = [:]
+        state.generation += 1
         persist()
         flash("已清除本应用记录，健康库未改动")
     }
@@ -460,19 +527,21 @@ final class AppModel: ObservableObject {
             preferences: state.preferences,
             events: state.events,
             contextNote: state.contextNote,
+            feedback: state.feedback,
             allowedScopes: config.scopes,
             now: Date()
         )
     }
 
     private func currentPacket(task: String, facts: [EvidenceFact], question: String) -> EvidencePacket {
-        buildEvidencePacket(
+        let window = inferenceObservationWindow(
+            facts: facts,
+            lastNight: snapshot.lastNight,
+            timeZone: snapshot.timeZone
+        )
+        return buildEvidencePacket(
             task: task,
-            window: TimeWindow(
-                start: snapshot.lastNight?.mainStart ?? Date().addingTimeInterval(-24 * 3600),
-                end: snapshot.lastNight?.mainEnd ?? Date(),
-                timeZone: snapshot.timeZone
-            ),
+            window: window,
             baselineValidDays: snapshot.hrvValidDays,
             facts: facts,
             allowedScopes: Set(config.scopes.filter { $0.value }.map(\.key)),
@@ -481,17 +550,69 @@ final class AppModel: ObservableObject {
         )
     }
 
+    private func liveCacheKey(task: String, facts: [EvidenceFact], question: String, profile: AIProviderProfile) -> InferenceCacheKey {
+        let packet = currentPacket(task: task, facts: facts, question: question)
+        return makeInferenceCacheKey(
+            packet: packet,
+            contextText: sentContextText(facts),
+            profile: profile,
+            promptVersion: promptVersion,
+            sourcePolicyVersion: sourcePolicyVersion,
+            consentVersion: state.consent?.scopeVersion ?? "",
+            generation: state.generation
+        )
+    }
+
     private func applyLocal(task: String, facts: [EvidenceFact], question: String) {
         let result = localInference(task: task, snapshot: snapshot, facts: facts, question: question.isEmpty ? nil : question)
-        storeInference(task: task, result: result, facts: facts, mode: "local", model: "本地规则摘要")
+        let key = liveCacheKey(task: task, facts: facts, question: question, profile: config.activeProfile)
+        storeInference(
+            task: task,
+            result: result,
+            facts: facts,
+            mode: "local",
+            model: "本地规则摘要",
+            originalGeneratedAt: Date(),
+            cacheHit: false,
+            inputHash: key.inputHash,
+            window: key.window
+        )
     }
 
     private func performLive(task: String, facts: [EvidenceFact], question: String, automatic: Bool) async {
         let profile = config.activeProfile
         let packet = currentPacket(task: task, facts: facts, question: question)
-        let key = makeCacheKey(task: task, facts: facts, question: question, profile: profile)
-        if let cached = await cache.get(key) {
-            storeInference(task: task, result: cached.result, facts: facts, mode: "live", model: profile.model)
+        let key = liveCacheKey(task: task, facts: facts, question: question, profile: profile)
+        let now = Date()
+        let requestID = UUID()
+        let context = InferenceRequestContext(
+            requestID: requestID,
+            generation: state.generation,
+            task: task,
+            profileID: profile.id,
+            model: profile.model,
+            normalizedEndpoint: key.normalizedEndpoint,
+            protocolName: profile.protocolName,
+            authType: profile.auth,
+            consentVersion: key.consentVersion,
+            inputHash: key.inputHash,
+            window: key.window,
+            createdAt: now
+        )
+
+        if let cached = await cache.get(key, now: now) {
+            guard context.generation == state.generation else { return }
+            storeInference(
+                task: task,
+                result: cached.result,
+                facts: facts,
+                mode: "live",
+                model: profile.model,
+                originalGeneratedAt: cached.originalGeneratedAt,
+                cacheHit: true,
+                inputHash: key.inputHash,
+                window: key.window
+            )
             if task == "assistant", !question.isEmpty {
                 state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
                 state.chat.append(ChatTurn(role: "assistant", text: cached.result.summary, createdAt: Date()))
@@ -500,6 +621,9 @@ final class AppModel: ObservableObject {
             if !automatic { flash("相同摘要已分析过，未重复调用模型") }
             return
         }
+
+        guard context.generation == state.generation else { return }
+        liveRequestID = requestID
         aiBusy = task
         aiError = nil
         let started = Date()
@@ -514,77 +638,95 @@ final class AppModel: ObservableObject {
                 user: payload
             )
             try Task.checkCancellation()
-            let parsed = try parseResult(text: text, facts: facts, hasContext: facts.contains { $0.scope == "context" })
+            guard shouldCommitInference(context: context, currentGeneration: state.generation, currentRequestID: liveRequestID) else {
+                return
+            }
+            let parsed = try parseResult(text: text, facts: facts)
             if parsed.uncertainties.isEmpty {
                 throw AIValidationError.invalidField("缺少不确定性说明，分析结果未采纳")
             }
             if task == "mood" && parsed.emotion == nil {
                 throw AIValidationError.invalidEmotion("情绪结果字段缺失")
             }
+            let original = Date()
             await cache.put(
-                InferenceRecord(result: parsed, evidenceIDs: Set(facts.map(\.id)), generation: state.generation),
-                for: key
+                InferenceRecord(
+                    result: parsed,
+                    evidenceIDs: Set(facts.map(\.id)),
+                    generation: context.generation,
+                    originalGeneratedAt: original
+                ),
+                for: key,
+                now: original
             )
-            storeInference(task: task, result: parsed, facts: facts, mode: "live", model: profile.model)
+            guard shouldCommitInference(context: context, currentGeneration: state.generation, currentRequestID: liveRequestID) else {
+                return
+            }
+            storeInference(
+                task: task,
+                result: parsed,
+                facts: facts,
+                mode: "live",
+                model: profile.model,
+                originalGeneratedAt: original,
+                cacheHit: false,
+                inputHash: key.inputHash,
+                window: key.window
+            )
             if task == "assistant", !question.isEmpty {
                 state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
                 state.chat.append(ChatTurn(role: "assistant", text: parsed.summary, createdAt: Date()))
             }
             log(kind: task, status: "success", model: profile.model, facts: facts, latency: Int(Date().timeIntervalSince(started) * 1000))
             if !automatic { flash("已收到模型分析") }
-        } catch is CancellationError {
-            aiError = "请求已取消"
         } catch {
-            aiError = userFacingError(error)
-            log(kind: task, status: "failed", model: profile.model, facts: facts, latency: nil)
-            if task == "assistant", !question.isEmpty {
-                state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
-                state.chat.append(ChatTurn(role: "assistant", text: "本次没有得到有效回答：\(aiError ?? "")", createdAt: Date()))
+            guard shouldCommitInference(context: context, currentGeneration: state.generation, currentRequestID: liveRequestID) else {
+                return
             }
-            if !automatic { flash(aiError ?? "分析失败") }
+            if error is CancellationError {
+                aiError = "请求已取消"
+            } else {
+                aiError = userFacingError(error)
+                log(kind: task, status: "failed", model: profile.model, facts: facts, latency: nil)
+                if task == "assistant", !question.isEmpty {
+                    state.chat.append(ChatTurn(role: "user", text: question, createdAt: Date()))
+                    state.chat.append(ChatTurn(role: "assistant", text: "本次没有得到有效回答：\(aiError ?? "")", createdAt: Date()))
+                }
+                if !automatic { flash(aiError ?? "分析失败") }
+            }
         }
-        aiBusy = nil
+        if shouldClearBusy(finishing: requestID, currentRequestID: liveRequestID) {
+            aiBusy = nil
+            liveRequestID = nil
+        }
         persist()
         pushWatch()
     }
 
-    private func makeCacheKey(task: String, facts: [EvidenceFact], question: String, profile: AIProviderProfile) -> InferenceCacheKey {
-        let window = TimeWindow(
-            start: snapshot.lastNight?.mainStart ?? Date().addingTimeInterval(-24 * 3600),
-            end: snapshot.lastNight?.mainEnd ?? Date(),
-            timeZone: snapshot.timeZone
-        )
-        let endpoint = (try? normalizeBase(profile.baseURL, allowLocalHTTP: profile.allowLocalHTTP)) ?? profile.baseURL
-        return InferenceCacheKey(
-            task: task,
-            inputHash: inputDigest(facts.map(\.id).joined(separator: ",") + "|" + question),
-            window: window,
-            model: profile.model,
-            normalizedEndpoint: endpoint,
-            promptVersion: promptVersion,
-            sourcePolicyVersion: sourcePolicyVersion,
-            consentVersion: state.consent?.scopeVersion ?? "",
-            generation: state.generation
-        )
-    }
-
-    private func storeInference(task: String, result: AIResult, facts: [EvidenceFact], mode: String, model: String) {
-        let window = TimeWindow(
-            start: snapshot.lastNight?.mainStart ?? Date().addingTimeInterval(-24 * 3600),
-            end: snapshot.lastNight?.mainEnd ?? Date(),
-            timeZone: snapshot.timeZone
-        )
-        state.inferences[task] = PersistedInference(
-            task: task,
+    private func storeInference(
+        task: String,
+        result: AIResult,
+        facts: [EvidenceFact],
+        mode: String,
+        model: String,
+        originalGeneratedAt: Date,
+        cacheHit: Bool,
+        inputHash: String,
+        window: TimeWindow
+    ) {
+        state.inferences[task] = applyCachedInference(
             result: result,
             facts: facts,
             model: model,
             mode: mode,
-            generatedAt: Date(),
-            observedEnd: snapshot.lastSampleAt ?? Date(),
-            inputHash: inputDigest(facts.map(\.id).joined()),
-            window: window
+            originalGeneratedAt: originalGeneratedAt,
+            servedAt: Date(),
+            cacheHit: cacheHit,
+            inputHash: inputHash,
+            window: window,
+            task: task
         )
+        lastLiveHash[task] = inputHash
         persist()
         pushWatch()
     }
@@ -614,10 +756,26 @@ final class AppModel: ObservableObject {
         if state.logs.count > 80 { state.logs = Array(state.logs.prefix(80)) }
     }
 
-    private func ingestWatch(_ event: WatchOutboundEvent) {
-        state.events = addingEvent(state.events, event.asHabitEvent())
-        persist()
-        flash("手表已同步 \(event.kind == "water" ? "\(Int(event.amount)) ml 饮水" : "一次呼吸练习")")
+    private func ingestWatch(_ event: WatchOutboundEvent) -> WatchAck? {
+        let ack = ingestWatchEvent(
+            events: state.events,
+            tombstones: state.eventTombstones,
+            event: event
+        ) { events, tombs in
+            var next = state
+            next.events = events
+            next.eventTombstones = tombs
+            next.watchSnapshotRevision += 1
+            try store.save(next)
+            state = next
+        }
+        if ack != nil {
+            pushWatch()
+            flash("手表已同步 \(event.kind == "water" ? "\(Int(event.amount)) ml 饮水" : "一次呼吸练习")")
+        } else {
+            flash("本地保存失败")
+        }
+        return ack
     }
 
     private func pushWatch() {
@@ -627,7 +785,9 @@ final class AppModel: ObservableObject {
             inferences: state.inferences,
             events: state.events,
             preferences: state.preferences,
-            now: Date()
+            now: Date(),
+            tombstones: state.eventTombstones,
+            snapshotRevision: state.watchSnapshotRevision
         )
         connectivity.push(payload)
     }

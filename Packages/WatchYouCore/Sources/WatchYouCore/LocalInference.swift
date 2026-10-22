@@ -37,7 +37,7 @@ public func localInference(
                 : parts.joined(separator: "；") + "。这是本地规则摘要，不是模型推断。"
         }
     case "mood":
-        emotion = localMood(snapshot: snapshot, hasContext: facts.contains { $0.scope == "context" })
+        emotion = localMood(snapshot: snapshot, hasContext: hasSendableContext(facts))
         summary = emotion?.status == "insufficient"
             ? "当前条件不足以估计情绪倾向，保留未知。"
             : "近期生理信号\(emotion?.label ?? "暂无法判断")。仅凭这些信号还不能判断情绪正负向。"

@@ -49,7 +49,7 @@ public struct AIEmotion: Equatable, Sendable, Codable {
 public func parseResult(
     text: String,
     facts: [EvidenceFact],
-    hasContext: Bool = false
+    hasContext: Bool? = nil
 ) throws -> AIResult {
     guard text.count <= 128000 else {
         throw AIValidationError.oversized("模型返回过大或不是文本")
@@ -88,7 +88,7 @@ public func parseResult(
 
     var emotion: AIEmotion? = nil
     if let e = object["emotion"] as? [String: Any] {
-        emotion = try validateEmotion(e, hasContext: hasContext)
+        emotion = try validateEmotion(e, hasContext: hasContext ?? hasSendableContext(facts))
     }
 
     return AIResult(

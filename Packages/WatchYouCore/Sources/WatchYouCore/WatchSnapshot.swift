@@ -16,6 +16,9 @@ public struct WatchSnapshot: Equatable, Sendable, Codable {
     public var empty: Bool
     public var stale: Bool
     public var includedWaterIds: [String]
+    public var logicalDay: Date?
+    public var timeZoneIdentifier: String
+    public var snapshotRevision: Int
 
     public init(
         generatedAt: Date,
@@ -31,7 +34,10 @@ public struct WatchSnapshot: Equatable, Sendable, Codable {
         waterGoal: Int,
         empty: Bool,
         stale: Bool,
-        includedWaterIds: [String] = []
+        includedWaterIds: [String] = [],
+        logicalDay: Date? = nil,
+        timeZoneIdentifier: String = "",
+        snapshotRevision: Int = 0
     ) {
         self.generatedAt = generatedAt
         self.observedAt = observedAt
@@ -47,12 +53,15 @@ public struct WatchSnapshot: Equatable, Sendable, Codable {
         self.empty = empty
         self.stale = stale
         self.includedWaterIds = includedWaterIds
+        self.logicalDay = logicalDay
+        self.timeZoneIdentifier = timeZoneIdentifier
+        self.snapshotRevision = snapshotRevision
     }
 
     private enum CodingKeys: String, CodingKey {
         case generatedAt, observedAt, todayTitle, todaySummary, moodLabel, moodNote
         case sleepText, sleepWindowText, recoveryText, waterMl, waterGoal, empty, stale
-        case includedWaterIds
+        case includedWaterIds, logicalDay, timeZoneIdentifier, snapshotRevision
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,6 +80,9 @@ public struct WatchSnapshot: Equatable, Sendable, Codable {
         empty = try container.decode(Bool.self, forKey: .empty)
         stale = try container.decode(Bool.self, forKey: .stale)
         includedWaterIds = try container.decodeIfPresent([String].self, forKey: .includedWaterIds) ?? []
+        logicalDay = try container.decodeIfPresent(Date.self, forKey: .logicalDay)
+        timeZoneIdentifier = try container.decodeIfPresent(String.self, forKey: .timeZoneIdentifier) ?? ""
+        snapshotRevision = try container.decodeIfPresent(Int.self, forKey: .snapshotRevision) ?? 0
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -89,6 +101,9 @@ public struct WatchSnapshot: Equatable, Sendable, Codable {
         try container.encode(empty, forKey: .empty)
         try container.encode(stale, forKey: .stale)
         try container.encode(includedWaterIds, forKey: .includedWaterIds)
+        try container.encodeIfPresent(logicalDay, forKey: .logicalDay)
+        try container.encode(timeZoneIdentifier, forKey: .timeZoneIdentifier)
+        try container.encode(snapshotRevision, forKey: .snapshotRevision)
     }
 }
 
@@ -123,7 +138,7 @@ public struct WatchOutboundEvent: Equatable, Sendable, Codable {
 public func mergingOutbound(_ existing: [WatchOutboundEvent], _ event: WatchOutboundEvent) -> [WatchOutboundEvent] {
     if let index = existing.firstIndex(where: { $0.id == event.id }) {
         var next = existing
-        if event.revision >= next[index].revision {
+        if event.revision > next[index].revision {
             next[index] = event
         }
         return next
@@ -152,7 +167,9 @@ public func makeWatchSnapshot(
     inferences: [String: PersistedInference],
     events: [HabitEvent],
     preferences: UserPreferences,
-    now: Date
+    now: Date,
+    tombstones: [String: Int] = [:],
+    snapshotRevision: Int = 0
 ) -> WatchSnapshot {
     let today = inferences["today"]
     let mood = inferences["mood"]
@@ -178,9 +195,10 @@ public func makeWatchSnapshot(
     calendar.timeZone = snapshot.timeZone
     let dayStart = calendar.startOfDay(for: now)
     let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-    let includedWaterIds = waterEvents
-        .filter { $0.createdAt >= dayStart && $0.createdAt < dayEnd }
-        .map(\.id)
+    let includedWaterIds = Array(Set(
+        waterEvents.filter { $0.createdAt >= dayStart && $0.createdAt < dayEnd }.map(\.id)
+            + tombstones.keys
+    )).sorted()
     let sleepWindow: String = {
         guard let night = snapshot.lastNight, let start = night.mainStart, let end = night.mainEnd else {
             return snapshot.lastNight == nil ? "暂无睡眠" : "时间未知"
@@ -205,15 +223,26 @@ public func makeWatchSnapshot(
         waterGoal: preferences.waterGoalMl,
         empty: empty,
         stale: stale,
-        includedWaterIds: includedWaterIds
+        includedWaterIds: includedWaterIds,
+        logicalDay: dayStart,
+        timeZoneIdentifier: snapshot.timeZone.identifier,
+        snapshotRevision: snapshotRevision
     )
 }
 
 /// Watch display total: phone snapshot already contains merged events; pending ids in `includedWaterIds` are not added again.
-public func displayedWater(snapshot: WatchSnapshot?, pending: [WatchOutboundEvent]) -> Int {
+/// Pending water only counts when it falls on the snapshot's logical day.
+public func displayedWater(snapshot: WatchSnapshot?, pending: [WatchOutboundEvent], now: Date = Date()) -> Int {
+    let timeZone = TimeZone(identifier: snapshot?.timeZoneIdentifier ?? "") ?? .current
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let day = snapshot?.logicalDay ?? calendar.startOfDay(for: snapshot?.generatedAt ?? now)
     let included = Set(snapshot?.includedWaterIds ?? [])
     let extra = pending
-        .filter { $0.kind == "water" && !included.contains($0.id) }
+        .filter { event in
+            guard event.kind == "water", !included.contains(event.id) else { return false }
+            return calendar.startOfDay(for: event.createdAt) == calendar.startOfDay(for: day)
+        }
         .reduce(0) { $0 + Int($1.amount.rounded()) }
     return (snapshot?.waterMl ?? 0) + extra
 }
